@@ -72,6 +72,6 @@ internal static class DanmakuViewportChecks
             check(Ink(bitmap,new Rectangle(0,0,80,180))>40 && Ink(bitmap,new Rectangle(400,0,80,180))>40,"ordinary danmaku can cross both side pillarbox bars");
         }
         var avoid=new CaptionOptions {Region=100,SubtitleSize=32,SubtitleBottom=7};
-        check(DanmakuLayout.AreaHeight(900,avoid,new Rectangle(0,150,1440,600))<690,"subtitle avoidance reserves the actual video subtitle band inside a taller canvas");
+        check(DanmakuLayout.AreaHeight(900,avoid,new Rectangle(0,150,1440,600))==900,"subtitle avoidance never shrinks the selected danmaku admission area");
     }
 }

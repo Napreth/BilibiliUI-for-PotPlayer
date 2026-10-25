@@ -11,13 +11,14 @@ namespace BilibiliPotPlayer
         readonly List<Segment> segments = new List<Segment>();
         double anchor, rate = 1, rendered;
         long wallAnchor, lastAdvance, lastRaw, lastObservation;
+        long pendingStop = -1;
         bool valid, playing, advanced;
         int extrapolation = ExtrapolationLimit;
         internal bool Valid { get { return valid; } }
         internal double Rate { get { return rate; } }
         internal int Epoch { get; private set; }
         internal const int ExtrapolationLimit = 750;
-        internal void Reset() { valid = playing = false; segments.Clear(); rendered = 0; Epoch++; }
+        internal void Reset() { valid = playing = false; pendingStop = -1; segments.Clear(); rendered = 0; Epoch++; }
         void Anchor(long media, long now, bool running, double speed)
         {
             valid = true; advanced = false; extrapolation = ExtrapolationLimit; playing = running; rate = speed; anchor = rendered = lastRaw = media;
@@ -26,13 +27,26 @@ namespace BilibiliPotPlayer
         }
         internal void Observe(long media, int status, double speed, long now)
         {
-            if (media < 0 || status == 0) { Reset(); return; }
+            // IPC may briefly report no state while the player recreates its video
+            // surface. Confirm a stop before discarding live instances.
+            if (status == 0)
+            {
+                if (!valid) return;
+                if (pendingStop < 0) { anchor = rendered = Position(now); wallAnchor = now; playing = false; pendingStop = now; }
+                if (now - pendingStop >= 150) Reset();
+                return;
+            }
+            if (media < 0) return;
+            pendingStop = -1;
             if (speed <= 0 || Double.IsNaN(speed) || Double.IsInfinity(speed)) speed = rate;
             speed = Math.Max(.1, Math.Min(12, speed));
             bool running = status == 2;
             if (!valid) { Anchor(media, now, running, speed); return; }
             double predicted = Position(now), error = media - predicted;
-            if (now < lastObservation || media < lastRaw - 40 || Math.Abs(error) > Math.Max(250, extrapolation * rate))
+            // A stale report behind the interpolated frame is not a backward seek.
+            // Detect backward jumps against the last raw sample instead, and never
+            // interpret an unchanged sample during buffering as a new timeline.
+            if (now < lastObservation || media < lastRaw - 250 || media > lastRaw && error > Math.Max(750, extrapolation * rate))
             { Epoch++; Anchor(media, now, running, speed); return; }
             if (playing != running)
             {
@@ -41,9 +55,9 @@ namespace BilibiliPotPlayer
                 anchor = rendered = Math.Max(predicted, media); wallAnchor = lastAdvance = now; playing = running;
             }
             else if (!running) { anchor = rendered = Math.Max(rendered, media); wallAnchor = lastAdvance = now; }
-            else if (media != lastRaw)
+            else if (media > lastRaw)
             {
-                int cadence = (int)Math.Max(250, Math.Min(3000, now - lastAdvance + 150));
+                int cadence = (int)Math.Max(ExtrapolationLimit, Math.Min(3000, now - lastAdvance + 150));
                 // The first advancing sample locates the player's coarse clock phase.
                 // Its typical 500 ms cadence must not be mistaken for buffering.
                 if (!advanced && error > 40) { Anchor(media, now, running, speed); advanced = true; extrapolation = cadence; return; }
@@ -61,7 +75,7 @@ namespace BilibiliPotPlayer
                 segments.Add(new Segment { Media = position, Animation = animation, Rate = speed });
                 anchor = rendered = position * 1000; wallAnchor = now; rate = speed;
             }
-            lastRaw = media; lastObservation = now;
+            lastRaw = Math.Max(lastRaw,media); lastObservation = now;
             double currentAnimation = AnimationTime(Position(now) / 1000.0);
             while (segments.Count > 2 && currentAnimation - segments[1].Animation > 120) segments.RemoveAt(0);
         }

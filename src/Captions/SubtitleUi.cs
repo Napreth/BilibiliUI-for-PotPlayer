@@ -17,6 +17,7 @@ namespace BilibiliPotPlayer
     internal static class CaptionDropAreas
     {
         internal const int RowHeight = 28, MainHeight = 556;
+        internal static int HeightFor(CaptionOptions options) { return MainHeight+(options.Region==100?36:0); }
         internal static RectangleF Bounds(TextCategory category)
         { return new RectangleF(category == TextCategory.Subtitle || category == TextCategory.Uncertain ? 16 : 326, category == TextCategory.Subtitle || category == TextCategory.Danmaku ? 39 : 180, 274, 100); }
         internal static TextCategory? At(float x, float y)
@@ -36,7 +37,7 @@ namespace BilibiliPotPlayer
     }
     internal sealed class SubtitlePopup : LayeredSurface
     {
-        sealed class Hit { internal RectangleF Rect; internal Action Action; internal TextSource Source; internal Action<float> Slide; }
+        sealed class Hit { internal RectangleF Rect; internal Action Action; internal TextSource Source; internal Action<float> Slide; internal string Tooltip; }
         sealed class PlayerOwner : IWin32Window { readonly IntPtr handle; internal PlayerOwner(IntPtr handle) { this.handle = handle; } public IntPtr Handle { get { return handle; } } }
         readonly SubtitleButton button;
         readonly CaptionCatalog catalog;
@@ -69,8 +70,8 @@ namespace BilibiliPotPlayer
             if (Visible && !overButton && !overPanel && !Capture && now - lastInside >= 450) { Dismiss(); page = picker = 0; return; }
             if (!Visible && (!overButton || now - hoverSince < 120)) return;
             Player = player; Rectangle client = Native.ClientBounds(player);
-            int logicalHeight = page == 0 ? CaptionDropAreas.MainHeight : 656;
-            scale = Math.Min(Math.Max(96, Native.GetDpiForWindow(player)) / 96f, Math.Min(client.Width / 620f, Math.Max(1, client.Height - 50) / (float)logicalHeight));
+            int logicalHeight = page == 0 ? CaptionDropAreas.HeightFor(catalog.Options) : 656;
+            if(slider==null || !Capture) scale = Math.Min(Math.Max(96, Native.GetDpiForWindow(player)) / 96f, Math.Min(client.Width / 620f, Math.Max(1, client.Height - 50) / (float)logicalHeight));
             if (now >= nextLanguageRead) { english = UiLanguage.Read().Subtitles == "Subtitles & danmaku"; nextLanguageRead = now + 1000; }
             int width = (int)(620 * scale), height = (int)(logicalHeight * scale); Rectangle screen = Screen.FromHandle(player).WorkingArea, anchor = button.ScreenBounds;
             Rectangle rect = new Rectangle(Math.Max(screen.Left, Math.Min(screen.Right - width, anchor.Right - width)), Math.Max(screen.Top, anchor.Top - height), width, height);
@@ -86,8 +87,8 @@ namespace BilibiliPotPlayer
         }
         void Line(Graphics graphics, float x1, float y1, float x2, float y2)
         { using (Pen pen = new Pen(Color.FromArgb(61, 62, 68), scale)) graphics.DrawLine(pen, x1 * scale, y1 * scale, x2 * scale, y2 * scale); }
-        void Register(RectangleF rect, Action action, TextSource source = null, Action<float> slide = null)
-        { hits.Add(new Hit { Rect = rect, Action = action, Source = source, Slide = slide }); }
+        void Register(RectangleF rect, Action action, TextSource source = null, Action<float> slide = null,string tooltip=null)
+        { hits.Add(new Hit { Rect = rect, Action = action, Source = source, Slide = slide, Tooltip=tooltip }); }
         void Switch(Graphics graphics, float x, float y, bool on, bool enabled = true)
         {
             RectangleF rect = R(x, y + 9, 30, 16);
@@ -181,7 +182,7 @@ namespace BilibiliPotPlayer
         }
         void MainPage(Graphics graphics)
         {
-            Line(graphics, 307, 10, 307, CaptionDropAreas.MainHeight - 10);
+            Line(graphics, 307, 10, 307, CaptionDropAreas.HeightFor(catalog.Options) - 10);
             Label(graphics, L("字幕", "Subtitles"), R(18, 9, 260, 28), Color.White, true, 14); Label(graphics, L("弹幕", "Danmaku"), R(328, 9, 260, 28), Color.White, true, 14);
             Rows(graphics, TextCategory.Subtitle, 0, 16, 39, 3, 274); Rows(graphics, TextCategory.Danmaku, 1, 326, 39, 3, 274);
             Line(graphics, 16, 147, 290, 147); Line(graphics, 326, 147, 603, 147);
@@ -195,7 +196,7 @@ namespace BilibiliPotPlayer
             Link(graphics, L("语音生成字幕 · 未接入", "Speech subtitles · unavailable"), 66, 384, 183, delegate { }, false);
             Link(graphics, L("从文件加载字幕/弹幕", "Load subtitles / danmaku"), 66, 412, 190, Import);
             DanmakuMain(graphics);
-            Nut(graphics, 267, 446, delegate { page = 1; picker = 0; }); Nut(graphics, 576, 520, delegate { page = 2; picker = 0; });
+            Nut(graphics, 267, 446, delegate { page = 1; picker = 0; }); Nut(graphics, 576, 520+(catalog.Options.Region==100?36:0), delegate { page = 2; picker = 0; });
             if (catalog.Status.Length > 0) Label(graphics, catalog.Status, R(18, 480, 274, 56), accent, false, 11);
         }
         void Nut(Graphics graphics, float x, float y, Action action)
@@ -231,12 +232,27 @@ namespace BilibiliPotPlayer
             Checkbox(graphics, L("弹幕随屏幕缩放", "Scale with screen"), 330, 382, 166, options.ScaleWithScreen, delegate { options.ScaleWithScreen = !options.ScaleWithScreen; Changed(); });
             Checkbox(graphics, L("防挡字幕", "Avoid subtitles"), 500, 382, 106, options.AvoidSubtitles, delegate { options.AvoidSubtitles = !options.AvoidSubtitles; Changed(); });
             CompactSlider(graphics, L("显示区域", "Area"), 417, options.Region, 10, 100, options.Region + "%", value => options.Region = value, DanmakuSettings.Regions);
-            CompactSlider(graphics, L("不透明度", "Opacity"), 451, options.Opacity, 10, 100, options.Opacity + "%", value => options.Opacity = value);
+            int densityOffset=options.Region==100?36:0;
+            if(densityOffset>0) Density(graphics);
+            CompactSlider(graphics, L("不透明度", "Opacity"), 451+densityOffset, options.Opacity, 10, 100, options.Opacity + "%", value => options.Opacity = value);
 
             string[] speedLabels = english ? new[] { "Slowest", "Slower", "Normal", "Faster", "Fastest" } : new[] { "极慢", "较慢", "适中", "较快", "极快" };
-            CompactSlider(graphics, L("弹幕速度", "Speed"), 485, options.Speed, 40, 160, speedLabels[DanmakuSettings.Index(options.Speed, DanmakuSettings.Speeds)], value => options.Speed = value, DanmakuSettings.Speeds);
+            CompactSlider(graphics, L("弹幕速度", "Speed"), 485+densityOffset, options.Speed, 40, 160, speedLabels[DanmakuSettings.Index(options.Speed, DanmakuSettings.Speeds)], value => options.Speed = value, DanmakuSettings.Speeds);
 
 
+        }
+        void Density(Graphics graphics)
+        {
+            using(Brush fill=new SolidBrush(Color.FromArgb(64,65,71))) graphics.FillRectangle(fill,R(326,451,277,28));
+            Label(graphics,L("弹幕密度","Density"),R(330,451,69,28),Color.White,false,11);
+            string[] labels={L("正常","Normal"),L("较多","More"),L("重叠","Overlap")};
+            string[] tips={L("绝对权重至少为 3，同类型弹幕避免重叠。无权重的来源保留全部弹幕。","Absolute weight at least 3, avoiding overlap within each type. Unscored sources keep every comment."),L("绝对权重至少为 2，同类型弹幕避免重叠。无权重时与正常档筛选相同。","Absolute weight at least 2, avoiding overlap within each type. Unscored sources match Normal."),L("沿用较多的筛选，滚动和固定弹幕均不受碰撞限制，可直接交叠。","Uses More filtering; scrolling and fixed comments may overlap without collision rejection.")};
+            for(int i=0;i<3;i++) {
+                int value=i+1; RectangleF rect=R(399+i*68,451,68,28);
+                Label(graphics,labels[i],rect,catalog.Options.Density==value?accent:Color.White,false,11,true);
+                if(i>0) Line(graphics,399+i*68,457,399+i*68,473);
+                Register(rect,delegate {catalog.Options.Density=value;Changed();},null,null,tips[i]);
+            }
         }
         void CompactSlider(Graphics graphics, string text, float y, int value, int min, int max, string display, Action<int> apply, int[] steps = null)
         {
@@ -389,7 +405,7 @@ namespace BilibiliPotPlayer
         int At(Point point) { return hits.FindIndex(hit => hit.Rect.Contains(point)); }
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            base.OnMouseMove(e); int index = At(e.Location); if (index != hovered) { hovered = index; tip.SetToolTip(this, index >= 0 && hits[index].Source != null ? hits[index].Source.Title + "\n" + hits[index].Source.Detail + "\n" + hits[index].Source.Error : ""); Invalidate(); }
+            base.OnMouseMove(e); int index = At(e.Location); if (index != hovered) { hovered = index; tip.SetToolTip(this, index >= 0 ? hits[index].Source != null ? hits[index].Source.Title + "\n" + hits[index].Source.Detail + "\n" + hits[index].Source.Error : hits[index].Tooltip??"" : ""); Invalidate(); }
             dragPoint = e.Location;
             if (slider != null) slider.Slide(e.X); if (dragSource != null && Math.Abs(e.X - start.X) + Math.Abs(e.Y - start.Y) > 8 * scale) { dragging = true; tip.Hide(this); Invalidate(); }
         }

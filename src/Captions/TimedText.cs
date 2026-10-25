@@ -24,6 +24,7 @@ namespace BilibiliPotPlayer
         internal CueEffects Effects;
         internal TextCategory? Declared;
         internal int Mode = 1, Color = 0xFFFFFF, Size = 25;
+        internal int? Weight;
     }
     internal sealed class TextSource
     {
@@ -136,13 +137,13 @@ namespace BilibiliPotPlayer
                 {
                     if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "d") { reader.Read(); continue; }
                     if (++total > MaxCues) throw new InvalidDataException("条目数量超过限制");
-                    string[] p = (reader.GetAttribute("p") ?? "").Split(','); string text = reader.ReadElementContentAsString();
+                    string[] p = (reader.GetAttribute("p") ?? "").Split(','); int? weight=ParseWeight(reader.GetAttribute("weight")); string text = reader.ReadElementContentAsString();
                     int mode, size = 25, color = 0xFFFFFF; double time;
                     if (p.Length < 4 || !Double.TryParse(p[0], NumberStyles.Float, Inv, out time) || Valid(time) < 0 || !Int32.TryParse(p[1], out mode)) continue;
                     if (!Int32.TryParse(p[2], out size)) size = 25; if (!Int32.TryParse(p[3], out color)) color = 0xFFFFFF;
-                    if (mode >= 7 && mode <= 9) { advancedCount++; advanced.Events.Add(new TextCue { Start = time, End = time + 8, Mode = mode, Size = size, Color = color, RawContent = text, Origin = "Bilibili XML mode " + mode, Effects = CueEffects.Protocol, DurationInferred = true }); continue; }
+                    if (mode >= 7 && mode <= 9) { advancedCount++; advanced.Events.Add(new TextCue { Start = time, End = time + 8, Mode = mode, Size = size, Color = color, Weight=weight, RawContent = text, Origin = "Bilibili XML mode " + mode, Effects = CueEffects.Protocol, DurationInferred = true }); continue; }
                     if (mode < 1 || mode > 6) continue;
-                    Add(ordinary, new TextCue { Start = time, End = time + 8, Text = text.Replace("/n", "\n"), Mode = mode, Size = size, Color = color, RawContent = text, Origin = "Bilibili XML mode " + mode, DurationInferred = true, Declared = TextCategory.Danmaku, Motion = mode == 4 || mode == 5 ? CueMotion.Static : CueMotion.Horizontal });
+                    Add(ordinary, new TextCue { Start = time, End = time + 8, Text = text.Replace("/n", "\n"), Mode = mode, Size = size, Color = color, Weight=weight, RawContent = text, Origin = "Bilibili XML mode " + mode, DurationInferred = true, Declared = TextCategory.Danmaku, Motion = mode == 4 || mode == 5 ? CueMotion.Static : CueMotion.Horizontal });
                 }
             ordinary.Analysis = CaptionClassifier.Analyze(ordinary.Events); ordinary.AutoCategory = TextCategory.Danmaku;
             advanced.Analysis = CaptionClassifier.Analyze(advanced.Events); advanced.AutoCategory = TextCategory.Advanced;
@@ -160,17 +161,23 @@ namespace BilibiliPotPlayer
             object parsed = json.DeserializeObject(value);
             Dictionary<string, object> document = parsed as Dictionary<string, object>;
             bool declared = document != null && document.ContainsKey("danmaku");
-            object[] entries = (declared ? document["danmaku"] : parsed) as object[];
+            object[] entries = (declared ? document["danmaku"] : document!=null && document.ContainsKey("body") ? document["body"] : parsed) as object[];
             TextSource source = new TextSource { Title = name, Format = "JSON", Loaded = true };
             if (entries != null) {
                 if (entries.Length > MaxCues) throw new InvalidDataException("条目数量超过限制");
                 foreach (object entry in entries) {
-                    Dictionary<string, object> item = entry as Dictionary<string, object>; if (item == null || !item.ContainsKey("time")) continue;
+                    Dictionary<string, object> item = entry as Dictionary<string, object>; if(item==null)continue;
+                    if(!declared && !item.ContainsKey("mode") && !item.ContainsKey("time") && item.ContainsKey("from") && item.ContainsKey("to") && item.ContainsKey("content")) {
+                        Add(source,new TextCue{Start=Time(Convert.ToString(item["from"],Inv)),End=Time(Convert.ToString(item["to"],Inv)),Text=Convert.ToString(item["content"],Inv),RawContent=json.Serialize(item),Origin="BilibiliSubtitleJSON",Declared=TextCategory.Subtitle,Motion=CueMotion.Static});
+                        continue;
+                    }
+                    if(!item.ContainsKey("time"))continue;
                     double time = Time(Convert.ToString(item["time"], Inv)); int mode = 0, color = 0xFFFFFF, size = 25;
                     if (item.ContainsKey("mode")) Int32.TryParse(Convert.ToString(item["mode"], Inv),out mode);
                     string type = item.ContainsKey("type") ? Convert.ToString(item["type"],Inv).ToLowerInvariant() : "";
                     TextCue cue = new TextCue { Start = time, End = item.ContainsKey("end") ? Time(Convert.ToString(item["end"],Inv)) : time + 8,
                         Text = item.ContainsKey("text") ? Convert.ToString(item["text"],Inv) : "", RawContent = json.Serialize(item), Origin = "JSON", DurationInferred = !item.ContainsKey("end"), Mode = mode >= 1 ? mode : 1 };
+                    if(item.ContainsKey("weight")) cue.Weight=ParseWeight(Convert.ToString(item["weight"],Inv));
                     if (mode >= 7 && mode <= 9 || type == "script" || type == "bas" || type == "advanced" || type == "animation") {
                         cue.Effects = CueEffects.Protocol; if (cue.Text.Length == 0) cue.Text = "[advanced]";
                     } else if (mode > 9 || item.ContainsKey("animation") || item.ContainsKey("motion") || item.ContainsKey("script")) cue.Effects = CueEffects.Unparsed;
@@ -182,6 +189,8 @@ namespace BilibiliPotPlayer
             }
             return CaptionClassifier.Split(source);
         }
+        static int? ParseWeight(string text)
+        { int weight; return Int32.TryParse(text,NumberStyles.Integer,Inv,out weight)?weight:(int?)null; }
         static void ParseTtml(string value, TextSource source)
         {
             source.Category = TextCategory.Subtitle; source.Format = "TTML";

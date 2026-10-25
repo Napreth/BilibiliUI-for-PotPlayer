@@ -39,6 +39,10 @@ internal static class TimedTextChecks
         List<TextSource> json = TimedText.Parse("{\"danmaku\":[{\"time\":1,\"text\":\"normal\",\"mode\":1},{\"time\":2,\"text\":\"code\",\"mode\":8}]}", "x.json", ".json");
         check(json.Count == 2 && json[0].Cues.Count == 1 && json[1].IntrinsicAdvanced, "declared JSON separates scripts from simple comments");
         check(TimedText.Parse("[{\"time\":1,\"text\":\"ambiguous\"}]", "x.json", ".json")[0].Category == TextCategory.Uncertain, "generic time/text JSON is ambiguous");
+        var biliSubtitle=TimedText.Parse("[{\"from\":7.211009,\"to\":9.95,\"location\":2,\"content\":\"subtitle\"}]","bili.json",".json")[0];
+        check(biliSubtitle.Category==TextCategory.Subtitle && biliSubtitle.Cues.Count==1 && biliSubtitle.Cues[0].Start==7.211009 && biliSubtitle.Cues[0].End==9.95 && biliSubtitle.Cues[0].Text=="subtitle","Bilibili subtitle arrays preserve from/to timing and content instead of importing an empty uncertain source");
+        var biliBody=TimedText.Parse("{\"body\":[{\"from\":1,\"to\":3,\"content\":\"first\"},{\"from\":4,\"to\":6,\"content\":\"second\"}]}","bili.json",".json")[0];
+        check(biliBody.Category==TextCategory.Subtitle && biliBody.Cues.Count==2 && biliBody.Cues[1].Start==4,"Bilibili subtitle body wrappers retain adjacent timed entries");
         check(TimedText.Parse("[00:01.00]one\n[00:05.00]two", "x.lrc", ".lrc")[0].Cues[0].End == 5, "lyrics end at next timestamp");
         check(TimedText.Parse("<tt><body><div><p begin='1s' end='3s'>one</p><p begin='4s' dur='2s'>two</p></div></body></tt>", "x.ttml", ".ttml")[0].Cues.Count == 2, "adjacent TTML cues retained");
         SubtitleSlots slots = new SubtitleSlots(); slots.Select("a"); check(slots.Main == "a" && slots.Secondary == null, "single subtitle selects main");

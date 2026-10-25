@@ -35,8 +35,9 @@ internal static class DanmakuPlaybackChecks
         check(added!=null && added.X==320 && added.Start==1.3,"a delayed frame admits a due event at its actual edge-entry time");
         frame=live.Frame(cues,1.316,320,180,options,measure,1.316);
         check(frame.Find(p=>p.Cue==future).X<320 && frame.Find(p=>p.Cue==future).X>318,"movement advances smoothly after edge admission");
+        live.SetEnabledCues(new List<TextCue>());
         frame=live.Frame(new List<TextCue>(),1.4,320,180,options,measure,1.4);
-        check(frame.Count==2,"disabling an ordinary source leaves its already admitted instances playing");
+        check(frame.Count==0,"disabling an ordinary source immediately removes its already admitted instances");
         live.Reset(); frame=live.Frame(cues,3,320,180,options,measure,3);
         check(frame.Count==0,"opening or loading a source cannot reconstruct historical comments mid-screen");
         live.Frame(new List<TextCue>(),4,320,180,options,measure,4);
@@ -50,7 +51,7 @@ internal static class DanmakuPlaybackChecks
         using(var catalog=new CaptionCatalog(IntPtr.Zero,null,options,null,delegate {}))
         using(var scene=new AssScene()) using(var bitmap=new Bitmap(320,180,PixelFormat.Format32bppPArgb))
         {
-            live.Reset(); cues=new List<TextCue> { Cue(0,"ONE"),Cue(0,"TWO"),Cue(0,"THREE"),Cue(2,"NEW") };
+            live.Reset(); cues=new List<TextCue> { Cue(0,"ONE"),Cue(0,"TWO"),Cue(0,"THREE") };
             live.Frame(cues,0,320,180,options,measure,0);
             frame=live.Frame(cues,1,320,180,options,measure,1);
             scene.Render(bitmap,catalog,1000,frame,1); byte[] before=Pixels(bitmap);
@@ -59,10 +60,10 @@ internal static class DanmakuPlaybackChecks
             options.DanmakuFont="SimSun"; options.DanmakuBold=false; options.DanmakuItalic=true; options.DanmakuUniformColor=true;
             options.DanmakuTextColor=0x0000FF; options.DanmakuOutline=2; options.DanmakuOutlineColor=0xFF0000;
             options.DanmakuBackground=true; options.DanmakuBackgroundColor=0x00FF00; options.ScaleWithScreen=true;
-            options.Scrolling=options.Fixed=options.Colored=false; options.AvoidSubtitles=true; catalog.Revision++;
+            options.AvoidSubtitles=true; catalog.Revision++;
             frame=live.Frame(cues,1,320,180,options,measure,1);
             scene.Render(bitmap,catalog,1000,frame,1);
-            check(frame.Count==3 && !Same(before,new byte[320*180*4]) && Same(before,Pixels(bitmap)),"style, opacity, region, scaling and type-filter edits leave existing ordinary glyphs pixel-identical");
+            check(frame.Count==3 && !Same(before,new byte[320*180*4]) && Same(before,Pixels(bitmap)),"style, opacity, region and scaling edits leave existing ordinary glyphs pixel-identical");
             check(frame[0].X==x && frame[2].Y==y && frame[0].Size==size && frame[0].Life==life && frame[0].ClipHeight==180,"existing comments retain position, size, clipping region and lifetime");
             frame=live.Frame(cues,2,320,180,options,measure,1.5);
             check(frame.Count==3 && Math.Abs(frame[0].X-(x-25))<.01,"speed and speed-sync edits do not change an existing comment's movement clock");
@@ -80,6 +81,31 @@ internal static class DanmakuPlaybackChecks
             options.DanmakuEnabled=true;
             check(live.Frame(cues,3.2,320,180,options,measure,2.1).Count==0,"re-enabling the master switch cannot resurrect cleared comments");
         }
+        options=new CaptionOptions {Region=100,AvoidSubtitles=false}; live.Reset();
+        var white=Cue(0,"white"); var colored=Cue(0,"color"); colored.Color=0xFF0000;
+        var fixedCue=Cue(0,"fixed",5); var secondSource=Cue(0,"other source");
+        cues=new List<TextCue>{white,colored,fixedCue,secondSource};
+        live.SetEnabledCues(cues); frame=live.Frame(cues,0,640,360,options,measure,0);
+        options.Colored=false; frame=live.Frame(cues,.1,640,360,options,measure,.1);
+        check(frame.Count==3 && !frame.Exists(p=>p.Cue==colored),"the color filter immediately removes only source-colored live comments");
+        options.Fixed=false; frame=live.Frame(cues,.2,640,360,options,measure,.2);
+        check(frame.Count==2 && !frame.Exists(p=>p.Cue==fixedCue),"the fixed filter immediately removes live fixed comments");
+        live.SetEnabledCues(new[]{white}); frame=live.Frame(cues,.3,640,360,options,measure,.3);
+        check(frame.Count==1 && frame[0].Cue==white,"a source switch removes only instances belonging to the disabled stream");
+        options.Scrolling=false; frame=live.Frame(cues,.4,640,360,options,measure,.4);
+        check(frame.Count==0,"the scrolling filter immediately removes live scrolling comments");
+        options.Scrolling=options.Fixed=options.Colored=true; live.SetEnabledCues(cues);
+        check(live.Frame(cues,.5,640,360,options,measure,.5).Count==0,"re-enabling source and type switches never resurrects cleared instances");
+        options=new CaptionOptions {Region=100,AvoidSubtitles=false}; live.Reset(); cues.Clear();
+        for(int i=0;i<32;i++)cues.Add(Cue(i*.25,"short "+i));
+        float lowest=0; bool steady=true;
+        for(int i=0;i<32;i++) {
+            frame=live.Frame(cues,i*.25,640,600,options,measure,i*.25);
+            foreach(var p in frame) lowest=Math.Max(lowest,p.Y);
+            if(frame.Count==0)steady=false;
+        }
+        check(steady && lowest>=540,"moderate scrolling traffic reaches the bottom of a full region instead of recycling only its upper lanes");
+        check(DanmakuLayout.AreaHeight(600,new CaptionOptions{Region=100},null,false)==600,"subtitle avoidance reserves no empty band when no subtitle stream is selected");
         options=new CaptionOptions { Region=100,ScaleWithScreen=false,AvoidSubtitles=false };
         live.Reset(); cues=new List<TextCue> { Cue(0,"old"),Cue(10,"seek target"),Cue(11,"next") };
         live.Frame(cues,0,320,180,options,measure,0,1);
@@ -98,17 +124,24 @@ internal static class DanmakuPlaybackChecks
             var source=TimedText.Parse(header+"Dialogue: 0,0:00:00.00,0:00:04.00,Default,,0,0,0,,{\\an7\\p1\\pos(200,100)}m 0 0 l 40 0 40 20 0 20\n","effect.ass",".ass")[0];
             source.Enabled=true; catalog.Sources.Add(source); catalog.Revision++;
             scene.Render(bitmap,catalog,0,new List<DanmakuPlacement>(),0,1); byte[] before=Pixels(bitmap);
-            source.Enabled=false; catalog.Options.AssEffectsEnabled=false; catalog.Revision++;
+            source.Enabled=false; catalog.Revision++;
             scene.Render(bitmap,catalog,1000,new List<DanmakuPlacement>(),1,1);
-            check(Same(before,Pixels(bitmap)) && !Same(before,new byte[320*180*4]),"source and advanced-type switches allow an admitted authored effect to finish");
+            check(Same(Pixels(bitmap),new byte[320*180*4]) && !Same(before,new byte[320*180*4]),"a source switch immediately removes an admitted authored effect");
             scene.Render(bitmap,catalog,4100,new List<DanmakuPlacement>(),4.1,1);
-            check(Same(Pixels(bitmap),new byte[320*180*4]),"retained advanced effects disappear at their authored end time");
+            check(Same(Pixels(bitmap),new byte[320*180*4]),"disabled advanced effects remain absent at their authored end time");
             source.Enabled=true; catalog.Options.AssEffectsEnabled=true; catalog.Revision++;
             scene.Render(bitmap,catalog,1000,new List<DanmakuPlacement>(),1,2);
             check(Same(Pixels(bitmap),new byte[320*180*4]),"re-enabling an advanced source after a seek cannot revive a historical effect");
             scene.Render(bitmap,catalog,0,new List<DanmakuPlacement>(),0,3);
-            catalog.Options.DanmakuEnabled=false; catalog.Revision++;
+            catalog.Options.AssEffectsEnabled=false; catalog.Revision++;
             scene.Render(bitmap,catalog,1000,new List<DanmakuPlacement>(),1,3);
+            check(Same(Pixels(bitmap),new byte[320*180*4]),"the advanced-type filter independently removes admitted effects immediately");
+            catalog.Options.AssEffectsEnabled=true; catalog.Revision++;
+            scene.Render(bitmap,catalog,1000,new List<DanmakuPlacement>(),1,3);
+            check(Same(Pixels(bitmap),new byte[320*180*4]),"re-enabling the advanced-type filter cannot resurrect a removed effect");
+            scene.Render(bitmap,catalog,0,new List<DanmakuPlacement>(),0,4);
+            catalog.Options.DanmakuEnabled=false; catalog.Revision++;
+            scene.Render(bitmap,catalog,1000,new List<DanmakuPlacement>(),1,4);
             check(Same(Pixels(bitmap),new byte[320*180*4]),"the master danmaku switch immediately clears authored advanced effects too");
         }
     }

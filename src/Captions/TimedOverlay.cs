@@ -63,12 +63,11 @@ namespace BilibiliPotPlayer
             }
             TimedText.Sort(timeline);
         }
-        internal static int AreaHeight(int height, CaptionOptions options, Rectangle? pictureBounds=null)
+        internal static int AreaHeight(int height, CaptionOptions options, Rectangle? pictureBounds=null, bool subtitlesPresent=true)
         {
-            int available = height * options.Region / 100;
-            Rectangle picture=pictureBounds??new Rectangle(0,0,1,height);
-            if (options.AvoidSubtitles && options.SubtitlesEnabled) available = Math.Min(available, picture.Bottom - (int)(picture.Height * options.SubtitleBottom / 100f + options.SubtitleSize * picture.Height / 1080f * 4 + 16));
-            return Math.Max(0, Math.Min(height, available));
+            // Subtitle avoidance is a temporary compositing mask, never a smaller
+            // admission area or a change to existing comment trajectories.
+            return Math.Max(0,Math.Min(height,height*options.Region/100));
         }
         internal static int LowerBound(List<TextCue> cues, double time)
         { int low = 0, high = cues.Count; while (low < high) { int middle = (low + high) / 2; if (cues[middle].Start < time) low = middle + 1; else high = middle; } return low; }
@@ -118,16 +117,18 @@ namespace BilibiliPotPlayer
             {
                 nextSample = now + 30;
                 long sample, status, speed;
-                if (!Native.Get(player, Native.GetPosition, out sample) || !Native.Get(player, Native.GetPlayStatus, out status) || status == 0) { clock.Reset(); Dismiss(); return; }
-                Native.Get(player, Native.GetSpeed, out speed);
-                clock.Observe(sample, (int)status, speed > 0 ? speed / 1000.0 : clock.Rate, now);
+                if (Native.Get(player, Native.GetPosition, out sample) && Native.Get(player, Native.GetPlayStatus, out status))
+                {
+                    Native.Get(player, Native.GetSpeed, out speed);
+                    clock.Observe(sample, (int)status, speed > 0 ? speed / 1000.0 : clock.Rate, now);
+                }
             }
             if (!clock.Valid) { Dismiss(); return; }
             long time = (long)Math.Round(clock.Position(now));
             Rectangle picture=PictureBounds(new Rectangle(0,0,Width,Height),catalog.DisplayRatio);
             if (revision != catalog.Revision)
             {
-                revision = catalog.Revision; DanmakuLayout.Collect(catalog, timeline); measurements.Clear();
+                revision = catalog.Revision; DanmakuLayout.Collect(catalog, timeline); playback.SetEnabledCues(timeline); measurements.Clear();
             }
             // PotPlayer raises or recreates its video child when changing fullscreen/renderers.
             // Restore our sibling order even when a paused frame needs no repaint.
@@ -147,13 +148,14 @@ namespace BilibiliPotPlayer
                         measurements[cue] = measured;
                     }
                     return measured.Width;
-                }, clock.AnimationTime(position), clock.Epoch, clock.Rate, picture,Math.Max(96,Native.GetDpiForWindow(player))/96f);
+                }, clock.AnimationTime(position), clock.Epoch, clock.Rate, picture,Math.Max(96,Native.GetDpiForWindow(player))/96f,
+                    catalog.Find(catalog.Slots.Main)!=null || catalog.Find(catalog.Slots.Secondary)!=null);
                 // libass composites all text into the same premultiplied surface.
                 // The native renderer is called after releasing GDI's bitmap lock.
                 pendingComments = comments;
             }
             if (scene == null) scene = new AssScene();
-            scene.Render(bitmap,catalog,time,pendingComments,clock.AnimationTime(time / 1000.0),clock.Epoch,picture);
+            scene.Render(bitmap,catalog,time,pendingComments,clock.AnimationTime(time / 1000.0),clock.Epoch,picture,Math.Max(96,Native.GetDpiForWindow(player))/96f);
             if (!Visible) Reveal(false); Present(Handle, bitmap); paintedTime = time; paintedRevision = catalog.Revision;
         }
         List<DanmakuPlacement> pendingComments;

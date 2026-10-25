@@ -42,6 +42,22 @@ __declspec(dllexport) void *__cdecl bili_ass_read(Context *ctx, const char *text
     return track;
 }
 __declspec(dllexport) void __cdecl bili_ass_free_track(ASS_Track *track) { if (track) ass_free_track(track); }
+__declspec(dllexport) int __cdecl bili_ass_regions(Context *ctx,ASS_Track *track,int64_t time,int width,int height,int *rects,int capacity)
+{
+    if (!ctx || !track || !rects || capacity<1 || width<1 || height<1 || width>16384 || height>16384) return 0;
+    if (ctx->fonts_dirty) { ass_set_fonts(ctx->renderer,NULL,"Microsoft YaHei UI",ASS_FONTPROVIDER_DIRECTWRITE,NULL,1); ctx->fonts_dirty=0; }
+    ass_set_frame_size(ctx->renderer,width,height); ass_set_storage_size(ctx->renderer,width,height);
+    int changed,count=0;
+    for (ASS_Image *image=ass_render_frame(ctx->renderer,track,time,&changed);image && count<capacity;image=image->next) {
+        if ((image->color & 255)==255 || image->w<=0 || image->h<=0) continue;
+        int l=image->dst_x<0?0:image->dst_x,t=image->dst_y<0?0:image->dst_y;
+        int r=image->dst_x+image->w,b=image->dst_y+image->h;
+        if (r>width) r=width; if (b>height) b=height;
+        if (r<=l || b<=t) continue;
+        rects[count*4]=l; rects[count*4+1]=t; rects[count*4+2]=r; rects[count*4+3]=b; count++;
+    }
+    return count;
+}
 __declspec(dllexport) int __cdecl bili_ass_render(Context *ctx, ASS_Track *track, int64_t time,
     int width, int height, int stride, unsigned char *pixels, int opacity)
 {

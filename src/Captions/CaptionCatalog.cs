@@ -17,19 +17,21 @@ namespace BilibiliPotPlayer
         public bool AssEffectsEnabled = true;
         public int SettingsVersion = 4;
         public int Region = 10, Opacity = 80, Size = 100, Speed = 100;
-        public int SubtitleSize = 32, SubtitleOpacity = 100, SubtitleColor = 0xFFFFFF, SubtitleBottom = 7;
+        public int Density = 1;
+        public int SubtitleSize = 48, SubtitleOpacity = 100, SubtitleColor = 0xFFFFFF, SubtitleBottom = 7;
+        public int SubtitleStyleVersion = 1;
         public bool SubtitleBackground;
         public bool SubtitlesEnabled = true;
         public bool DanmakuSpeedSync, DanmakuBold;
         public string DanmakuFont = "SimHei";
         public int DanmakuOutline = 1;
-        public string SubtitleFont = "Microsoft YaHei UI";
+        public string SubtitleFont = "Microsoft YaHei";
         public bool SubtitleBold, SubtitleItalic, DanmakuItalic, DanmakuUniformColor, DanmakuBackground;
-        public int SubtitleOutline = 1, SubtitleOutlineColor, SubtitleBackgroundColor;
+        public int SubtitleOutline = 3, SubtitleOutlineColor, SubtitleBackgroundColor;
         public int DanmakuTextColor = 0xFFFFFF, DanmakuOutlineColor, DanmakuBackgroundColor;
         internal CaptionOptions Snapshot() { return (CaptionOptions)MemberwiseClone(); }
         internal void ResetDanmaku()
-        { DanmakuEnabled = AssEffectsEnabled = Scrolling = Fixed = Colored = AvoidSubtitles = UseDanmakuColor = true; Region = 10; Opacity = 80; Size = Speed = 100; ScaleWithScreen = DanmakuSpeedSync = DanmakuBold = false; DanmakuFont = "SimHei"; DanmakuOutline = 1; DanmakuItalic = DanmakuUniformColor = DanmakuBackground = false; DanmakuTextColor = 0xFFFFFF; DanmakuOutlineColor = DanmakuBackgroundColor = 0; }
+        { DanmakuEnabled = AssEffectsEnabled = Scrolling = Fixed = Colored = AvoidSubtitles = UseDanmakuColor = true; Region = 10; Density = 1; Opacity = 80; Size = Speed = 100; ScaleWithScreen = DanmakuSpeedSync = DanmakuBold = false; DanmakuFont = "SimHei"; DanmakuOutline = 1; DanmakuItalic = DanmakuUniformColor = DanmakuBackground = false; DanmakuTextColor = 0xFFFFFF; DanmakuOutlineColor = DanmakuBackgroundColor = 0; }
 
         public Dictionary<string, int> Classes = new Dictionary<string, int>();
         internal static CaptionOptions Load() { return Load(SettingsPath); }
@@ -38,6 +40,9 @@ namespace BilibiliPotPlayer
             try { if (File.Exists(path)) { string json = File.ReadAllText(path); JavaScriptSerializer serializer = new JavaScriptSerializer(); CaptionOptions value = serializer.Deserialize<CaptionOptions>(json); if (value != null) { Dictionary<string, object> fields = serializer.Deserialize<Dictionary<string, object>>(json); if (!fields.ContainsKey("SettingsVersion") && value.Region == 50) value.Region = 10;
                 if ((!fields.ContainsKey("SettingsVersion") || value.SettingsVersion < 3) && value.Size == 100 && value.DanmakuBold && value.DanmakuOutline == 0 && value.DanmakuFont == "SimHei") { value.DanmakuBold = false; value.DanmakuOutline = 1; value.ScaleWithScreen = false; }
                 if (value.SettingsVersion < 4 && (value.Size==85 || value.Size==100) && !value.DanmakuBold && value.DanmakuOutline==1 && value.DanmakuFont=="SimHei") { value.Size=100; value.ScaleWithScreen=false; }
+                if(!fields.ContainsKey("SubtitleStyleVersion") && (!fields.ContainsKey("SubtitleSize") || value.SubtitleSize==32) && (!fields.ContainsKey("SubtitleFont") || value.SubtitleFont=="Microsoft YaHei UI") && (!fields.ContainsKey("SubtitleOutline") || value.SubtitleOutline==1) && value.SubtitleOutlineColor==0 && value.SubtitleColor==0xFFFFFF && value.SubtitleOpacity==100 && !value.SubtitleBold && !value.SubtitleItalic && !value.SubtitleBackground) {
+                    value.SubtitleSize=48;value.SubtitleFont="Microsoft YaHei";value.SubtitleOutline=3;
+                }
                 value.Clamp(); return value; } } }
             catch (IOException) { } catch (UnauthorizedAccessException) { } catch (ArgumentException) { } catch (InvalidOperationException) { }
             return new CaptionOptions();
@@ -45,11 +50,12 @@ namespace BilibiliPotPlayer
         internal void Clamp()
         {
             SettingsVersion = 4; Region = DanmakuSettings.Snap(Region, DanmakuSettings.Regions); Opacity = Math.Max(10, Math.Min(100, Opacity)); Size = Math.Max(50, Math.Min(170, Size)); Speed = DanmakuSettings.Snap(Speed, DanmakuSettings.Speeds);
+            Density = Math.Max(1,Math.Min(3,Density));
             SubtitleSize = Math.Max(16, Math.Min(64, SubtitleSize)); SubtitleOpacity = Math.Max(10, Math.Min(100, SubtitleOpacity)); SubtitleBottom = Math.Max(2, Math.Min(30, SubtitleBottom)); SubtitleColor &= 0xFFFFFF;
             DanmakuOutline = Math.Max(0, Math.Min(3, DanmakuOutline)); if (Array.IndexOf(DanmakuSettings.Fonts, DanmakuFont) < 0) DanmakuFont = "SimHei";
             SubtitleOutline = Math.Max(0, Math.Min(3, SubtitleOutline));
             SubtitleOutlineColor &= 0xFFFFFF; SubtitleBackgroundColor &= 0xFFFFFF; DanmakuTextColor &= 0xFFFFFF; DanmakuOutlineColor &= 0xFFFFFF; DanmakuBackgroundColor &= 0xFFFFFF;
-            if (Array.IndexOf(DanmakuSettings.Fonts, SubtitleFont) < 0) SubtitleFont = "Microsoft YaHei UI";
+            if (Array.IndexOf(DanmakuSettings.Fonts, SubtitleFont) < 0) SubtitleFont = "Microsoft YaHei";
             if (Classes == null) Classes = new Dictionary<string, int>();
         }
         internal static string SettingsPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BilibiliPotPlayer", "caption-options.json"); } }

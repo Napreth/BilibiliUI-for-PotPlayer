@@ -34,9 +34,11 @@ internal static class BridgeTests
         if (args.Length > 0 && args[0] == "--sidebar-tab-check") { WindowModeChecks.CheckSidebarTabs(); return 0; }
         if (args.Length > 0 && args[0] == "--layout-check") { WindowModeChecks.Run(); return 0; }
         if (args.Length > 0 && args[0] == "--status") { Status(); return 0; }
-        if (args.Length > 1 && args[0] == "--timing-probe") { PlaybackClockChecks.Sample(args[1]); return 0; }
+        if (args.Length > 1 && args[0] == "--timing-probe") { PlaybackClockChecks.Sample(args[1],args.Length>2?Int32.Parse(args[2]):4000); return 0; }
         if (args.Length > 0 && args[0] == "--ui-status") { UiStatus(); return 0; }
         if (args.Length > 0 && args[0] == "--font-probe") { DanmakuFontChecks.Probe(); return 0; }
+        if (args.Length > 1 && args[0] == "--placement-preview") { DanmakuPlacementChecks.Preview(args[1]); return 0; }
+        if (args.Length > 3 && args[0] == "--source-preview") { DanmakuPlacementChecks.PreviewSource(args[1],args[2],args[3]); return 0; }
         if (args.Length > 1 && args[0] == "--caption-preview") { CaptionPreview(args[1]); return 0; }
         if (args.Length > 1 && args[0] == "--classify-caption") {
             foreach (TextSource source in TimedText.Read(args[1])) Console.WriteLine(new JavaScriptSerializer().Serialize(new { source.Title, Category=source.Category.ToString(), Events=source.Events.Count, Playable=source.Cues.Count, source.Analysis }));
@@ -231,6 +233,10 @@ internal static class BridgeTests
         DanmakuPlaybackChecks.Run(Equal<bool>);
         DanmakuViewportChecks.Run(Equal<bool>);
         DanmakuFontChecks.Run(Equal<bool>);
+        DanmakuDensityChecks.Run(Equal<bool>);
+        DanmakuPlacementChecks.Run(Equal<bool>);
+        SubtitleMaskChecks.Run(Equal<bool>);
+        CaptionAppearanceChecks.Run(Equal<bool>);
         DanmakuFactoryChecks.Run(Equal<bool>);
         Console.WriteLine("PASS: " + checks + " input and metadata checks");
         return 0;

@@ -20,10 +20,12 @@ namespace BilibiliPotPlayer
         [DllImport("BilibiliAss.dll",CallingConvention=CallingConvention.Cdecl)] static extern IntPtr bili_ass_read(IntPtr context,byte[] data,int bytes);
         [DllImport("BilibiliAss.dll",CallingConvention=CallingConvention.Cdecl)] static extern void bili_ass_free_track(IntPtr track);
         [DllImport("BilibiliAss.dll",CallingConvention=CallingConvention.Cdecl)] static extern int bili_ass_render(IntPtr context,IntPtr track,long time,int width,int height,int stride,IntPtr pixels,int opacity);
+        [DllImport("BilibiliAss.dll",CallingConvention=CallingConvention.Cdecl)] static extern int bili_ass_regions(IntPtr context,IntPtr track,long time,int width,int height,[Out] int[] rectangles,int capacity);
         [DllImport("BilibiliAss.dll",CallingConvention=CallingConvention.Cdecl)] static extern int bili_ass_version();
         [DllImport("BilibiliAss.dll",CallingConvention=CallingConvention.Cdecl)] static extern void bili_ass_add_font(IntPtr context,byte[] name,byte[] data,int length);
         internal static int Version { get { return bili_ass_version(); } }
         IntPtr context;
+        readonly int[] regionBuffer=new int[8192];
         readonly Dictionary<string,IntPtr> tracks = new Dictionary<string,IntPtr>();
         readonly Dictionary<string,string> scripts = new Dictionary<string,string>();
         readonly HashSet<string> fonts = new HashSet<string>(), fontSections = new HashSet<string>();
@@ -56,6 +58,14 @@ namespace BilibiliPotPlayer
         }
         internal void AddFonts(IEnumerable<AssFont> entries)
         { foreach(AssFont font in entries) if(fonts.Add(font.Key)) bili_ass_add_font(context,Encoding.UTF8.GetBytes(font.Name+"\0"),font.Data,font.Data.Length); }
+        internal List<Rectangle> Regions(string key,long time,Rectangle viewport)
+        {
+            var result=new List<Rectangle>(); IntPtr track;
+            if(viewport.Width<=0 || viewport.Height<=0 || !tracks.TryGetValue(key,out track))return result;
+            int count=bili_ass_regions(context,track,time,viewport.Width,viewport.Height,regionBuffer,regionBuffer.Length/4);
+            for(int i=0;i<count;i++)result.Add(Rectangle.FromLTRB(regionBuffer[i*4]+viewport.Left,regionBuffer[i*4+1]+viewport.Top,regionBuffer[i*4+2]+viewport.Left,regionBuffer[i*4+3]+viewport.Top));
+            return result;
+        }
         internal int Render(Bitmap target,string key,long time,int opacity=100,Rectangle? viewport=null)
         {
             IntPtr track; if(!tracks.TryGetValue(key,out track)) return 0;
