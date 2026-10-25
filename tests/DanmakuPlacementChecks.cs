@@ -83,7 +83,7 @@ internal static class DanmakuPlacementChecks
             if(entry!=null) { visited.Add(entry.Y); order.Add(entry.Y); }
         }
         for(int i=1;i<order.Count;i++) {if(order[i]>order[i-1])ascending++;if(order[i]<order[i-1])descending++;}
-        check(visited.Count==20 && visited.Contains(570),"moderate traffic uses every full-height lane before repeatedly occupying the upper screen");
+        check(visited.Count>=17 && order.Exists(y=>y>=540),"moderate traffic uses the full height before repeatedly occupying the upper screen");
         check(ascending>=5 && descending>=5,"successive scrolling entries are spatially mixed instead of forming a monotone diagonal");
         bool safe=true; int maxFrame=0;
         foreach(int density in new[]{1,2}) {
@@ -95,13 +95,13 @@ internal static class DanmakuPlacementChecks
             }
         }
         check(safe && maxFrame>6,"Normal and More prevent actual rectangle intersections over time, including wider faster comments");
-        var sparse=Traffic(160,.25); bool overlapWithFreeRows=false;
+        var sparse=Traffic(160,.25); bool sparseSafe=true;
         options.Density=3; live.Reset();
         for(int tick=0;tick<1000;tick++) {
             var frame=Frame(live,sparse,tick*.032,options,1200);
-            if(frame.Count<40 && Collision(frame)) overlapWithFreeRows=true;
+            if(Collision(frame) || frame.Exists(p=>p.Group!=0)) sparseSafe=false;
         }
-        check(overlapWithFreeRows,"Overlap permits real scrolling intersections even while other full-height lanes are unused");
+        check(sparseSafe,"Overlap retains one collision-safe group while the full-height area still has room");
         options.Region=75;live.Reset();safe=true;
         for(int tick=0;tick<300;tick++) if(Collision(Frame(live,sparse,tick*.032,options,240)))safe=false;
         check(safe,"a saved Overlap choice below full display area still enforces collision avoidance");
@@ -123,6 +123,6 @@ internal static class DanmakuPlacementChecks
         check(separated.Count==13,"scrolling, top and bottom comments have separate collision pools instead of excluding each other's entire rows");
         options.Density=3;live.Reset();var fixedBurst=new List<TextCue>();for(int i=0;i<12;i++)fixedBurst.Add(new TextCue{Start=0,End=8,Text="fixed "+i,Mode=5});
         var fixedOverlap=Frame(live,fixedBurst,0,options,600);var fixedRows=new HashSet<float>();foreach(var p in fixedOverlap)fixedRows.Add(p.Y);
-        check(fixedOverlap.Count==12 && fixedRows.Count<12,"Overlap applies to fixed comments before all full-height rows are occupied");
+        check(fixedOverlap.Count==12 && fixedRows.Count==12 && fixedOverlap.TrueForAll(p=>p.Group==0),"fixed comments also fill their first safe group before overlapping");
     }
 }

@@ -38,6 +38,7 @@ internal static class BridgeTests
         if (args.Length > 0 && args[0] == "--ui-status") { UiStatus(); return 0; }
         if (args.Length > 0 && args[0] == "--font-probe") { DanmakuFontChecks.Probe(); return 0; }
         if (args.Length > 1 && args[0] == "--placement-preview") { DanmakuPlacementChecks.Preview(args[1]); return 0; }
+        if (args.Length > 1 && args[0] == "--subtitle-centering-preview") { SubtitleCenteringChecks.Preview(args[1]); return 0; }
         if (args.Length > 3 && args[0] == "--source-preview") { DanmakuPlacementChecks.PreviewSource(args[1],args[2],args[3]); return 0; }
         if (args.Length > 1 && args[0] == "--caption-preview") { CaptionPreview(args[1]); return 0; }
         if (args.Length > 1 && args[0] == "--classify-caption") {
@@ -235,7 +236,9 @@ internal static class BridgeTests
         DanmakuFontChecks.Run(Equal<bool>);
         DanmakuDensityChecks.Run(Equal<bool>);
         DanmakuPlacementChecks.Run(Equal<bool>);
+        DanmakuWebPlaybackChecks.Run(Equal<bool>);
         SubtitleMaskChecks.Run(Equal<bool>);
+        SubtitleCenteringChecks.Run(Equal<bool>);
         CaptionAppearanceChecks.Run(Equal<bool>);
         DanmakuFactoryChecks.Run(Equal<bool>);
         Console.WriteLine("PASS: " + checks + " input and metadata checks");

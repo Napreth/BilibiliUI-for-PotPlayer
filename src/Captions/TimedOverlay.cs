@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -31,7 +32,14 @@ namespace BilibiliPotPlayer
         }
         internal static int ColorFor(TextCue cue, CaptionOptions options) { return options.UseDanmakuColor ? options.DanmakuUniformColor ? options.DanmakuTextColor : cue.Color : 0xFFFFFF; }
         internal static float ScreenScale(int height,CaptionOptions options,float dpi)
-        { return options.ScaleWithScreen ? height/(720f*dpi) : 1; }
+        {
+            if(!options.ScaleWithScreen)return 1;
+            float logical=height/dpi;
+            float size=logical<=314?16:logical<=499?.0385f*logical+3.29f:logical<=608?.041f*logical:
+                logical<=700?.022f*logical+12:logical<=816?27:logical<=980?.0365f*logical-2.5f:
+                logical<=1300?.022f*logical+18.5f:40;
+            return size/25;
+        }
         internal static float SizeFor(TextCue cue,int height,CaptionOptions options,float dpi)
         { return Math.Max(8*dpi,Math.Min(512,(float)(25*dpi*cue.Size/Math.Max(1,cue.DanmakuBaseSize))*ScreenScale(height,options,dpi)*options.Size/100f)); }
 
@@ -39,11 +47,11 @@ namespace BilibiliPotPlayer
     internal sealed class DanmakuPlacement
     {
         internal TextCue Cue;
-        internal float X, Y, Size, Width, FromX, ToX;
+        internal float X, Y, Size, Width, Height, FromX, ToX;
         internal double Start, Life;
         internal bool Timed;
         internal CaptionOptions Appearance;
-        internal int CanvasWidth, CanvasHeight, ClipHeight;
+        internal int CanvasWidth, CanvasHeight, ClipHeight, Group;
         internal float DpiScale = 1;
     }
     internal static class DanmakuLayout
@@ -85,6 +93,7 @@ namespace BilibiliPotPlayer
         readonly CaptionCatalog catalog;
         readonly List<TextCue> timeline = new List<TextCue>();
         readonly PlaybackClock clock = new PlaybackClock();
+        readonly Stopwatch wallClock=Stopwatch.StartNew();
         readonly DanmakuPlayback playback = new DanmakuPlayback();
         sealed class Measurement { internal float Size, Width; }
         readonly Dictionary<TextCue, Measurement> measurements = new Dictionary<TextCue, Measurement>();
@@ -106,8 +115,9 @@ namespace BilibiliPotPlayer
         }
         protected override void OnPaint(PaintEventArgs e) { }
         protected override void OnPaintBackground(PaintEventArgs e) { }
-        internal void Update(IntPtr player, long now)
+        internal void Update(IntPtr player)
         {
+            long now=wallClock.ElapsedMilliseconds;
             if (now < nextFrame) return; nextFrame = now + 10;
             if (mediaPath != catalog.MediaPath) { mediaPath = catalog.MediaPath; clock.Reset(); playback.Reset(); nextSample = 0; }
             if (Native.IsIconic(player) || !Native.IsWindowVisible(player)) { Dismiss(); return; }
@@ -115,15 +125,11 @@ namespace BilibiliPotPlayer
             if (bounds.IsEmpty || !PlaceInPlayer(player, bounds)) { Dismiss(); return; }
             if (now >= nextSample)
             {
-                nextSample = now + 30;
-                long sample, status, speed;
-                if (Native.Get(player, Native.GetPosition, out sample) && Native.Get(player, Native.GetPlayStatus, out status))
-                {
-                    Native.Get(player, Native.GetSpeed, out speed);
-                    clock.Observe(sample, (int)status, speed > 0 ? speed / 1000.0 : clock.Rate, now);
-                }
+                clock.Sample(command=>{long value;return Native.Get(player,command,out value)?(long?)value:null;},()=>wallClock.ElapsedMilliseconds);
+                nextSample=wallClock.ElapsedMilliseconds+30;
             }
             if (!clock.Valid) { Dismiss(); return; }
+            now=wallClock.ElapsedMilliseconds;
             long time = (long)Math.Round(clock.Position(now));
             Rectangle picture=PictureBounds(new Rectangle(0,0,Width,Height),catalog.DisplayRatio);
             if (revision != catalog.Revision)

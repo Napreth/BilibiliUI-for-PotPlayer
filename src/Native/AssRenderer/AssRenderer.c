@@ -49,12 +49,24 @@ __declspec(dllexport) int __cdecl bili_ass_regions(Context *ctx,ASS_Track *track
     ass_set_frame_size(ctx->renderer,width,height); ass_set_storage_size(ctx->renderer,width,height);
     int changed,count=0;
     for (ASS_Image *image=ass_render_frame(ctx->renderer,track,time,&changed);image && count<capacity;image=image->next) {
-        if ((image->color & 255)==255 || image->w<=0 || image->h<=0) continue;
+        unsigned alpha=255-(image->color & 255);
+        if (!alpha || !image->bitmap || image->w<=0 || image->h<=0) continue;
         int l=image->dst_x<0?0:image->dst_x,t=image->dst_y<0?0:image->dst_y;
         int r=image->dst_x+image->w,b=image->dst_y+image->h;
         if (r>width) r=width; if (b>height) b=height;
         if (r<=l || b<=t) continue;
-        rects[count*4]=l; rects[count*4+1]=t; rects[count*4+2]=r; rects[count*4+3]=b; count++;
+        /* ASS_Image includes transparent tile padding, which is not necessarily
+           symmetric around the glyph. Backgrounds must follow visible coverage,
+           using the same alpha rounding as the compositor below. */
+        int ink_l=r,ink_t=b,ink_r=l,ink_b=t;
+        for (int y=t;y<b;y++) for (int x=l;x<r;x++) {
+            unsigned coverage=image->bitmap[(size_t)(y-image->dst_y)*image->stride+(x-image->dst_x)];
+            if ((coverage*alpha+127)/255==0) continue;
+            if (x<ink_l) ink_l=x; if (x+1>ink_r) ink_r=x+1;
+            if (y<ink_t) ink_t=y; if (y+1>ink_b) ink_b=y+1;
+        }
+        if (ink_r<=ink_l || ink_b<=ink_t) continue;
+        rects[count*4]=ink_l; rects[count*4+1]=ink_t; rects[count*4+2]=ink_r; rects[count*4+3]=ink_b; count++;
     }
     return count;
 }

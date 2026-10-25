@@ -73,13 +73,13 @@ internal static class DanmakuFontChecks
         foreach(float dpi in new[]{1f,1.5f}) {
             var rows=new DanmakuPlayback(); var simultaneous=new List<TextCue>{new TextCue{Start=0,Text="one",Mode=5},new TextCue{Start=0,Text="two",Mode=5},new TextCue{Start=0,Text="three",Mode=5}};
             var frame=rows.Frame(simultaneous,0,800,600,options,(cue,size,style)=>size*5,0,0,1,null,dpi);
-            check(frame.Count==3 && Math.Abs(frame[1].Y-30*dpi)<.01 && Math.Abs(frame[2].Y-60*dpi)<.01,"ordinary row spacing matches a 30 logical pixel grid at DPI scale "+dpi);
+            check(frame.Count==3 && Math.Abs(frame[1].Y-29.125f*dpi)<.01 && Math.Abs(frame[2].Y-58.25f*dpi)<.01,"ordinary spacing follows measured text height with logical pixel padding at DPI scale "+dpi);
         }
         var scaled=live.Frame(cues,1,1920,1440,options,(cue,size,style)=>size*5,1,0,1,null,1.5f);
         check(scaled[0].Size==37.5f,"moving an unsynchronized live comment to a different DPI preserves its logical size");
         options.ScaleWithScreen=true; live.Reset(); initial=live.Frame(cues,0,1280,720,options,(cue,size,style)=>size*5,0);
         resized=live.Frame(cues,1,1920,1440,options,(cue,size,style)=>size*5,1);
-        check(initial[0].Appearance.ScaleWithScreen && resized[0].Size==50,"explicit screen scaling doubles the font only when the viewport height doubles");
+        check(initial[0].Appearance.ScaleWithScreen && Math.Abs(DanmakuSettings.SizeFor(cueText,720,options,1)-27)<.01 && Math.Abs(resized[0].Size-40)<.01,"explicit screen scaling follows the web's piecewise height curve during resize");
         string path=Path.Combine(Path.GetTempPath(),"font-baseline-"+Guid.NewGuid().ToString("N")+".json");
         try {
             File.WriteAllText(path,"{\"SettingsVersion\":3,\"Size\":85,\"ScaleWithScreen\":true,\"DanmakuBold\":false,\"DanmakuOutline\":1}");

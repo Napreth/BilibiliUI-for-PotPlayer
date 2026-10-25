@@ -57,7 +57,7 @@ internal static class PlaybackClockChecks
         clock.Observe(100, 2, 2, 100);
         float x2 = DanmakuTestFrames.At(cues, .1, 320, 180, options, (cue,size) => 60, 2, clock)[0].X;
         float x3 = DanmakuTestFrames.At(cues, .132, 320, 180, options, (cue,size) => 60, 2, clock)[0].X;
-        check(x1 == x2 && Math.Abs(x2 - x3 - .76) < .01, "ordinary comments do not jump when temporarily entering 2x playback");
+        check(x1 == x2 && Math.Abs(x2 - x3 - 1.351111) < .01, "ordinary comments do not jump when temporarily entering 2x playback");
         options.DanmakuSpeedSync = true;
         float x4 = DanmakuTestFrames.At(cues, .132, 320, 180, options, (cue,size) => 60, 2, clock)[0].X;
         check(x4 < x3, "enabling speed sync still makes ordinary comments follow media time");
@@ -82,18 +82,36 @@ internal static class PlaybackClockChecks
         check(transient.Valid && transient.Epoch==stableEpoch,"a transient stopped report does not clear and recreate a running scene");
         transient.Observe(1000,0,1,90); transient.Observe(1000,0,1,300);
         check(!transient.Valid,"a confirmed stop still clears the playback clock");
+        var delayed=new PlaybackClock();delayed.Observe(1000,2,1,0);delayed.Observe(1500,2,1,500);
+        stableEpoch=delayed.Epoch; previous=delayed.Position(500);bool monotone=true;
+        int nextReport=1000;bool captionEarly=false;var boundary=new List<TextCue>{new TextCue{Start=5,End=6,Text="next line"}};
+        for(int now=512;now<5000;now+=16) {
+            if(now>=nextReport){delayed.Observe(1000+now-200,2,1,now);nextReport+=500;}
+            double position=delayed.Position(now);if(position<previous)monotone=false;previous=position;
+            if(now>=4000 && now<4050 && DanmakuLayout.Active(boundary,position/1000).Count>0)captionEarly=true;
+        }
+        delayed.Observe(5800,2,1,5000);
+        check(Math.Abs(delayed.Position(5000)-5800)<60 && delayed.Epoch==stableEpoch && monotone,"a buffering-induced phase lead converges back to player time without rewinding comments or clearing the scene");
+        check(!captionEarly,"a recovered caption clock does not select the next line before its media timestamp");
+        var ipc=new PlaybackClock();long wall=0;
+        Func<int,long?> query=command=>{if(command==Native.GetPosition){wall+=80;return 1000+wall;}wall+=40;return command==Native.GetPlayStatus?2:1000;};
+        ipc.Sample(query,()=>wall);wall=500;ipc.Sample(query,()=>wall);wall=700;
+        check(Math.Abs(ipc.Position(wall)-(1000+wall))<1,"player IPC latency is counted once by timestamping the actual position report");
+        stableEpoch=ipc.Epoch;
+        check(!ipc.Sample(command=>null,()=>wall) && ipc.Valid && ipc.Epoch==stableEpoch,"a failed position query retains the existing interpolation state");
     }
     // Run inside the player's interactive session; no seeking or input injection.
     internal static void Sample(string path,int duration=4000)
     {
         List<IntPtr> players = Native.PlayerWindows(); if (players.Count == 0) throw new InvalidOperationException("No player");
         Stopwatch timer = Stopwatch.StartNew(); PlaybackClock clock = new PlaybackClock();
-        List<string> rows = new List<string> { "wall,raw,interpolated,status,rate,epoch,sampleOk" }; long next = 0, sample = 0, status = 0, speed = 1000; bool sampleOk=true;
+        List<string> rows = new List<string> { "wall,raw,interpolated,status,rate,epoch,sampleOk,sampleWall" }; long next = 0, sample = 0, status = 0, speed = 1000,sampleWall=0; bool sampleOk=true;
+        Func<int,long?> query=command=>{long value;if(!Native.Get(players[0],command,out value))return null;if(command==Native.GetPosition)sample=value;else if(command==Native.GetPlayStatus)status=value;else if(command==Native.GetSpeed)speed=value;return value;};
         while (timer.ElapsedMilliseconds < Math.Max(1000,Math.Min(120000,duration)))
         {
             long now = timer.ElapsedMilliseconds;
-            if (now >= next) { next = now + 30; sampleOk=Native.Get(players[0], Native.GetPosition, out sample) && Native.Get(players[0], Native.GetPlayStatus, out status); if(sampleOk) { Native.Get(players[0], Native.GetSpeed, out speed); clock.Observe(sample,(int)status,speed / 1000.0,now); } }
-            rows.Add(String.Join(",", now, sample, clock.Position(now).ToString("0.###",CultureInfo.InvariantCulture), status, speed,clock.Epoch,sampleOk)); Thread.Sleep(8);
+            if (now >= next) { sampleOk=clock.Sample(query,()=>{sampleWall=timer.ElapsedMilliseconds;return sampleWall;});now=timer.ElapsedMilliseconds;next=now+30; }
+            rows.Add(String.Join(",", now, sample, clock.Position(now).ToString("0.###",CultureInfo.InvariantCulture), status, speed,clock.Epoch,sampleOk,sampleWall)); Thread.Sleep(8);
         }
         File.WriteAllLines(path,rows);
     }

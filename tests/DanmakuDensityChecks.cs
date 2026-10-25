@@ -40,7 +40,7 @@ internal static class DanmakuDensityChecks
         options.Density=2; var more=Frame(new DanmakuPlayback(),burst,0,options);
         options.Density=3; var overlap=Frame(new DanmakuPlayback(),burst,0,options);
         check(normal.Count==3 && more.Count==normal.Count,"unscored sources are not randomly filtered to manufacture a difference between Normal and More");
-        check(overlap.Count==burst.Count && overlap.Exists(p=>p.Y==0) && overlap.Exists(p=>p.Y==30) && overlap.Exists(p=>p.Y==60),"Overlap admits crowded events and distributes overflow across the available rows");
+        check(overlap.Count==9 && overlap.Exists(p=>p.Group==0) && overlap.Exists(p=>p.Group==1) && overlap.Exists(p=>p.Group==2),"Overlap admits up to three bounded groups rather than unlimited fixed-comment intersections");
         options.Region=75; check(Frame(new DanmakuPlayback(),burst,0,options,120).Count==3,"a remembered Overlap choice is inactive below one hundred percent region");
         options.Region=100; options.Density=1; var live=new DanmakuPlayback(); Frame(live,burst,0,options);
         using(var catalog=new CaptionCatalog(IntPtr.Zero,null,options,null,delegate {}))using(var scene=new AssScene())using(var bitmap=new Bitmap(320,90,PixelFormat.Format32bppPArgb)) {
@@ -49,13 +49,13 @@ internal static class DanmakuDensityChecks
             check(frame.Count==3 && Same(before,Pixels(bitmap)) && frame.TrueForAll(p=>p.Appearance.Density==1),"density changes leave paused in-flight comment pixels and appearance snapshots unchanged");
             for(int i=0;i<9;i++)burst.Add(Cue("new "+i,null,1));
             frame=Frame(live,burst,1,options);
-            check(frame.Count==12 && frame.FindAll(p=>p.Cue.Start==1).TrueForAll(p=>p.Appearance.Density==3),"only new admissions use the newly selected overlap policy");
+            check(frame.Count==9 && frame.FindAll(p=>p.Cue.Start==1).TrueForAll(p=>p.Appearance.Density==3),"only new admissions use the newly selected overlap policy");
             options.Density=1;frame=Frame(live,burst,1,options);
-            check(frame.Count==12,"returning to Normal lets already overlapping instances finish");
+            check(frame.Count==9,"returning to Normal lets already overlapping instances finish");
             check(Frame(live,burst,6.1,options).Count==0,"density changes never reconstruct old rejected or expired events");
         }
         options.Density=3;live.Reset();burst.Clear();for(int i=0;i<DanmakuPlayback.MaxActive+20;i++)burst.Add(Cue("bounded "+i));
-        check(Frame(live,burst,0,options).Count==DanmakuPlayback.MaxActive,"overlap mode bounds native scene and live-state size for extreme bursts");
+        check(Frame(live,burst,0,options,6000).Count==DanmakuPlayback.MaxActive,"overlap mode also bounds native scene and live-state size when all three groups have ample room");
         var xml=TimedText.Parse("<i><d p='0,5,25,16777215' weight='2'>weighted</d><d p='1,5,25,16777215'>unknown</d></i>","weights.xml",".xml")[0];
         check(xml.Cues[0].Weight==2 && !xml.Cues[1].Weight.HasValue,"XML imports preserve optional weight attributes without inventing missing scores");
         var json=TimedText.Parse("{\"danmaku\":[{\"time\":0,\"mode\":5,\"text\":\"weighted\",\"weight\":-3},{\"time\":1,\"mode\":5,\"text\":\"invalid\",\"weight\":\"bad\"}]}","weights.json",".json")[0];

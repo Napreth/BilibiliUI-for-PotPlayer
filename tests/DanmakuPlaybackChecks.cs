@@ -66,15 +66,15 @@ internal static class DanmakuPlaybackChecks
             check(frame.Count==3 && !Same(before,new byte[320*180*4]) && Same(before,Pixels(bitmap)),"style, opacity, region and scaling edits leave existing ordinary glyphs pixel-identical");
             check(frame[0].X==x && frame[2].Y==y && frame[0].Size==size && frame[0].Life==life && frame[0].ClipHeight==180,"existing comments retain position, size, clipping region and lifetime");
             frame=live.Frame(cues,2,320,180,options,measure,1.5);
-            check(frame.Count==3 && Math.Abs(frame[0].X-(x-25))<.01,"speed and speed-sync edits do not change an existing comment's movement clock");
+            check(frame.Count==3 && Math.Abs(frame[0].X-(x-44.444444))<.01,"speed and speed-sync edits do not change an existing comment's movement clock");
             options.Scrolling=options.Colored=true; options.Region=100; options.AvoidSubtitles=false; options.ScaleWithScreen=false;
             cues.Add(Cue(3,"NEW STYLE"));
             frame=live.Frame(cues,3,320,180,options,measure,2);
             added=frame.Find(p=>p.Cue.Start==3);
-            check(added!=null && added.X==320 && added.Appearance.Opacity==10 && added.Appearance.DanmakuFont=="SimSun" && added.Size==34 && added.Life==5,"new admissions capture edited style and speed while old comments retain their snapshots");
+            check(added!=null && added.X==320 && added.Appearance.Opacity==10 && added.Appearance.DanmakuFont=="SimSun" && added.Size==34 && added.Life==2.8125,"new admissions capture edited style and speed while old comments retain their snapshots");
             scene.Render(bitmap,catalog,3000,frame,2);
             frame=live.Frame(cues,3.1,320,180,options,measure,2.05);
-            check(Math.Abs(frame.Find(p=>p.Cue.Start==3).X-(320-(320+136)*.1/5))<.01,"mixed speed-sync policies advance on their captured clocks");
+            check(Math.Abs(frame.Find(p=>p.Cue.Start==3).X-(320-(320+136)*.1/2.8125))<.01,"mixed speed-sync policies advance on their captured clocks");
             options.DanmakuEnabled=false; catalog.Revision++;
             frame=live.Frame(cues,3.1,320,180,options,measure,2.05); scene.Render(bitmap,catalog,3100,frame,2.05);
             check(frame.Count==0 && Same(Pixels(bitmap),new byte[320*180*4]),"the master switch immediately clears all live ordinary pixels");

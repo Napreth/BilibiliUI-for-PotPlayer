@@ -67,7 +67,7 @@ namespace BilibiliPotPlayer
             if (Layout.Available) Playlist.Update();
             Streams.UpdatePlayer(Player, now, false, true);
             Captions.Tick(now);
-            Overlay.MenuWindow = Chrome.IsHandleCreated ? Chrome.Handle : IntPtr.Zero; Overlay.Update(Player, now);
+            Overlay.MenuWindow = Chrome.IsHandleCreated ? Chrome.Handle : IntPtr.Zero; Overlay.Update(Player);
             Chrome.UpdatePlayer(now);
             if (Chrome.IsHandleCreated) Layout.BindChrome(Chrome.Handle);
             IntPtr interactive = focused == Player && Chrome.ControlsVisible ? Player : IntPtr.Zero;

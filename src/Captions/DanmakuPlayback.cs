@@ -35,8 +35,9 @@ namespace BilibiliPotPlayer
         {
             if (p.CanvasWidth != width || p.CanvasHeight != height || p.DpiScale != dpi)
             {
-                p.Size *= p.Appearance.ScaleWithScreen ? height / (float)p.CanvasHeight : dpi / p.DpiScale;
+                p.Size *= dpi / p.DpiScale * DanmakuSettings.ScreenScale(height,p.Appearance,dpi) / DanmakuSettings.ScreenScale(p.CanvasHeight,p.Appearance,p.DpiScale);
                 p.Width = measure(p.Cue, p.Size, p.Appearance);
+                p.Height = DanmakuTiming.Height(p.Cue,p.Size);
                 p.Y *= height / (float)p.CanvasHeight;
                 p.ClipHeight = (int)Math.Round(p.ClipHeight * height / (double)p.CanvasHeight);
                 p.CanvasWidth = width; p.CanvasHeight = height;
@@ -45,14 +46,16 @@ namespace BilibiliPotPlayer
             p.FromX = Fixed(p.Cue) ? (width - p.Width) / 2 : p.Cue.Mode == 6 ? -p.Width : width;
             p.ToX = Fixed(p.Cue) ? p.FromX : p.Cue.Mode == 6 ? width : -p.Width;
         }
-        bool Free(DanmakuPlacement next, double media, double animation, double rate)
+        bool Free(DanmakuPlacement next, double media, double animation, double rate,out int load)
         {
+            load=0; float padding=next.DpiScale;
             foreach (DanmakuPlacement old in active)
             {
-                if(!SamePool(next.Cue,old.Cue)) continue;
-                if (next.Y >= old.Y + old.Size * 1.125f || old.Y >= next.Y + next.Size * 1.125f) continue;
+                if(old.Group!=next.Group || !SamePool(next.Cue,old.Cue)) continue;
+                if (next.Y+.001f >= old.Y + old.Height+padding || old.Y+.001f >= next.Y + next.Height+padding) continue;
+                load++;
                 if (Fixed(next.Cue) || Fixed(old.Cue) || next.Cue.Mode != old.Cue.Mode) return false;
-                double gap = next.Cue.Mode == 6 ? old.X - 12 : next.CanvasWidth - old.X - old.Width - 12;
+                double gap = next.Cue.Mode == 6 ? old.X - 12*padding : next.CanvasWidth - old.X - old.Width - 12*padding;
                 if (gap < 0) return false;
                 double oldRate = old.Appearance.DanmakuSpeedSync ? rate : 1, newRate = next.Appearance.DanmakuSpeedSync ? rate : 1;
                 double oldVelocity = (old.CanvasWidth + old.Width) / old.Life * oldRate;
@@ -62,26 +65,36 @@ namespace BilibiliPotPlayer
             }
             return true;
         }
-        bool Place(DanmakuPlacement next,int area,float line,double media,double animation,double rate)
+        bool Place(DanmakuPlacement next,int area,double media,double animation,double rate)
         {
-            int rows=Math.Max(1,Math.Min(100,(int)Math.Floor((area-next.Size*1.125f)/line)+1));
-            bool fixedCue=Fixed(next.Cue), overlap=DanmakuDensity.Overlap(next.Appearance);
-            if(overlap) { int row=Choose(rows); next.Y=fixedCue && next.Cue.Mode==4?Math.Max(0,area-next.Size*1.125f-row*line):row*line; return true; }
-            int bestLoad=Int32.MaxValue,ties=0; float bestY=0;
-            for(int row=0;row<rows;row++)
+            bool fixedCue=Fixed(next.Cue);
+            int groups=DanmakuDensity.Overlap(next.Appearance)?3:1;
+            float bottom=Math.Max(0,area-next.Height),step=Math.Max(1,next.Height+next.DpiScale);
+            for(int group=0;group<groups;group++)
             {
-                next.Y=fixedCue && next.Cue.Mode==4?Math.Max(0,area-next.Size*1.125f-row*line):row*line;
-                if(!Free(next,media,animation,rate)) continue;
-                if(fixedCue) return true;
-                int load=0;
+                next.Group=group;
+                var positions=new List<float>{0,bottom};
+                for(float y=step;y<bottom;y+=step) positions.Add(y);
+                // Add actual box edges as well as evenly distributed candidates.
+                // A smaller incoming font can use gaps between larger comments.
                 foreach(DanmakuPlacement old in active)
-                    if(SamePool(next.Cue,old.Cue) && next.Y<old.Y+old.Size*1.125f && old.Y<next.Y+next.Size*1.125f) load++;
-                // Spread traffic across the available height, choosing among
-                // equally occupied safe lanes without correlating row with time.
-                if(load<bestLoad) { bestLoad=load; bestY=next.Y; ties=1; }
-                else if(load==bestLoad && Choose(++ties)==0) bestY=next.Y;
+                    if(old.Group==group && SamePool(next.Cue,old.Cue)) {
+                        float below=old.Y+old.Height+next.DpiScale, above=old.Y-next.Height-next.DpiScale;
+                        if(below>=0 && below<=bottom)positions.Add(below);
+                        if(above>=0 && above<=bottom)positions.Add(above);
+                    }
+                positions.Sort(); if(fixedCue && next.Cue.Mode==4)positions.Reverse();
+                int bestLoad=Int32.MaxValue,ties=0;float bestY=0,last=Single.NaN;
+                foreach(float y in positions) {
+                    if(Math.Abs(y-last)<.001f)continue; last=y; next.Y=y;
+                    int load;if(!Free(next,media,animation,rate,out load))continue;
+                    if(fixedCue)return true;
+                    if(load<bestLoad){bestLoad=load;bestY=y;ties=1;}
+                    else if(load==bestLoad && Choose(++ties)==0)bestY=y;
+                }
+                // Exhaust a collision-safe group before adding an overlapping one.
+                if(bestLoad<Int32.MaxValue){next.Y=bestY;return true;}
             }
-            if(bestLoad<Int32.MaxValue) { next.Y=bestY; return true; }
             return false;
         }
         internal List<DanmakuPlacement> Frame(List<TextCue> timeline, double media, int width, int height, CaptionOptions options,
@@ -108,12 +121,12 @@ namespace BilibiliPotPlayer
                     int area = DanmakuLayout.AreaHeight(height, options,pictureBounds,subtitlesPresent); if (area <= 0) continue;
                     if (appearance == null) appearance = options.Snapshot();
                     float size = DanmakuSettings.SizeFor(cue,height,appearance,dpiScale);
-                    double life = 8.0 * 100 / appearance.Speed; if (Fixed(cue)) life = Math.Min(5, life);
-                    DanmakuPlacement p = new DanmakuPlacement { Cue=cue, Appearance=appearance, Size=size, Width=measure(cue,size,appearance),
+                    float textWidth=measure(cue,size,appearance);
+                    double life = Fixed(cue)?4.5:DanmakuTiming.BaseDuration(width,textWidth,dpiScale)*100/appearance.Speed;
+                    DanmakuPlacement p = new DanmakuPlacement { Cue=cue, Appearance=appearance, Size=size, Width=textWidth,Height=DanmakuTiming.Height(cue,size),
                         CanvasWidth=width, CanvasHeight=height, DpiScale=dpiScale,ClipHeight=area, Start=appearance.DanmakuSpeedSync?media:animation, Life=life, Timed=true };
                     Geometry(p, width, height,dpiScale, measure); Position(p, media, animation);
-                    float line = Math.Max(1,30*dpiScale*DanmakuSettings.ScreenScale(height,appearance,dpiScale)*appearance.Size/100f);
-                    if(Place(p,area,line,media,animation,rate)) active.Add(p);
+                    if(Place(p,area,media,animation,rate)) active.Add(p);
                 }
             }
             previous = Math.Max(previous, media);

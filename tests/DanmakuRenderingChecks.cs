@@ -92,20 +92,20 @@ internal static class DanmakuRenderingChecks
             byte[] previous=null; bool moving=true;
             for(int frame=0;frame<20;frame++)
             {
-                long now=4000+frame*16;
+                long now=2000+frame*16;
                 var placements=DanmakuTestFrames.At(cues,now/1000.0,320,180,catalog.Options,(cue,size)=>100);
                 scene.Render(bitmap,catalog,now,placements); byte[] current=Pixels(bitmap);
                 bool different=previous==null; if(previous!=null) for(int i=0;i<current.Length;i++) if(current[i]!=previous[i]) { different=true; break; }
                 moving &= different && !Ink(bitmap).IsEmpty; previous=current;
             }
             check(moving,"ordinary libass move animation changes actual glyph pixels on every 16 ms frame");
-            var same=DanmakuTestFrames.At(cues,4.304,320,180,catalog.Options,(cue,size)=>100);
-            scene.Render(bitmap,catalog,4304,same); byte[] frozen=Pixels(bitmap); scene.Render(bitmap,catalog,4304,same); byte[] repeat=Pixels(bitmap);
+            var same=DanmakuTestFrames.At(cues,2.304,320,180,catalog.Options,(cue,size)=>100);
+            scene.Render(bitmap,catalog,2304,same); byte[] frozen=Pixels(bitmap); scene.Render(bitmap,catalog,2304,same); byte[] repeat=Pixels(bitmap);
             bool stable=true; for(int i=0;i<repeat.Length;i++) if(repeat[i]!=frozen[i]) { stable=false; break; }
             check(stable,"cached ordinary motion track freezes exactly at a paused timestamp");
             cues[0].Mode=6;
-            var reverse1=DanmakuTestFrames.At(cues,4,320,180,catalog.Options,(cue,size)=>100); scene.Render(bitmap,catalog,4000,reverse1); int x1=Ink(bitmap).Left;
-            var reverse2=DanmakuTestFrames.At(cues,4.5,320,180,catalog.Options,(cue,size)=>100); scene.Render(bitmap,catalog,4500,reverse2);
+            var reverse1=DanmakuTestFrames.At(cues,2,320,180,catalog.Options,(cue,size)=>100); scene.Render(bitmap,catalog,2000,reverse1); int x1=Ink(bitmap).Left;
+            var reverse2=DanmakuTestFrames.At(cues,2.5,320,180,catalog.Options,(cue,size)=>100); scene.Render(bitmap,catalog,2500,reverse2);
             check(Ink(bitmap).Left>x1+10,"reverse ordinary comments move smoothly toward the right");
         }
         using(var catalog=new CaptionCatalog(IntPtr.Zero,null,new CaptionOptions { Region=10, Opacity=10 },null,delegate {})) using(var scene=new AssScene()) using(var bitmap=new Bitmap(320,180,PixelFormat.Format32bppPArgb))
