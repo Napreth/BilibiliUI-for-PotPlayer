@@ -15,3 +15,4 @@ $assSource=Join-Path $repo '.local/dependencies/libass/libass-0.17.5'
 & $Compiler -shared -O2 -s -static-libgcc '-Wl,--no-insert-timestamp' "-I$assSource" -o "$ass/BilibiliAss.dll" "$ass/AssRenderer.c" "$repo/third_party/libass/win-x64/libass.dll.a"
 if ($LASTEXITCODE -ne 0) { throw 'ASS renderer bridge compilation failed. Run build/libass.ps1 first.' }
 & (Join-Path $PSScriptRoot 'danmaku-factory.ps1') -BridgeOnly -Compiler $Compiler
+& (Join-Path $PSScriptRoot 'raw-compression.ps1') -BridgeOnly -Compiler $Compiler

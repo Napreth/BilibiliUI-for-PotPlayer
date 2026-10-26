@@ -40,7 +40,7 @@ internal static class BridgeTests
         if (args.Length > 1 && args[0] == "--placement-preview") { DanmakuPlacementChecks.Preview(args[1]); return 0; }
         if (args.Length > 1 && args[0] == "--subtitle-centering-preview") { SubtitleCenteringChecks.Preview(args[1]); return 0; }
         if (args.Length > 3 && args[0] == "--source-preview") { DanmakuPlacementChecks.PreviewSource(args[1],args[2],args[3]); return 0; }
-        if (args.Length > 1 && args[0] == "--caption-preview") { CaptionPreview(args[1]); return 0; }
+        if (args.Length > 1 && args[0] == "--caption-preview") { CaptionPreview(args[1], args.Length > 2 ? Single.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 1); return 0; }
         if (args.Length > 1 && args[0] == "--classify-caption") {
             foreach (TextSource source in TimedText.Read(args[1])) Console.WriteLine(new JavaScriptSerializer().Serialize(new { source.Title, Category=source.Category.ToString(), Events=source.Events.Count, Playable=source.Cues.Count, source.Analysis }));
             return 0;
@@ -225,7 +225,10 @@ internal static class BridgeTests
         DolbyVisionProbeChecks.Run(Equal<bool>);
         SphericalVideoProbeChecks.Run(Equal<bool>);
         TimedTextChecks.Run(Equal<bool>);
+        CaptionDiscoveryChecks.Run(Equal<bool>);
         CaptionClassificationChecks.Run(Equal<bool>);
+        AssConverterChecks.Run(Equal<bool>);
+        DanAnyRawChecks.Run(Equal<bool>);
         ModuleChecks.Run(Equal<bool>);
         NativeTimedTextChecks.Run(Equal<bool>);
         AssRenderingChecks.Run(Equal<bool>);
@@ -375,7 +378,7 @@ internal static class BridgeTests
             Equal(null, captions.Slots.Main, "reclassified pending track no longer occupies a subtitle slot");
         }
     }
-    static void CaptionPreview(string folder)
+    static void CaptionPreview(string folder, float scale)
     {
         folder = System.IO.Path.GetFullPath(folder); System.IO.Directory.CreateDirectory(folder);
         using (StreamControls streams = new StreamControls())
@@ -388,21 +391,30 @@ internal static class BridgeTests
                 for (int i = 0; i < 3; i++) captions.Sources.Add(new TextSource { Id = category + "-" + i, Title = (category == TextCategory.Danmaku ? "普通弹幕" : category == TextCategory.Uncertain ? "用途待定" : "高级弹幕") + (i + 1) + ".xml", Category = category, Enabled = category == TextCategory.Danmaku, IntrinsicAdvanced = category == TextCategory.Advanced, Loaded = true });
             captions.Slots.Main = "subtitle-0"; popup.Size = new Size(620, CaptionDropAreas.MainHeight);
             Type type = typeof(SubtitlePopup); var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            type.GetField("scale", flags).SetValue(popup, scale); popup.Size = new Size((int)(620 * scale), (int)(CaptionDropAreas.MainHeight * scale));
             var paint = type.GetMethod("OnPaint", flags);
-            foreach (string view in new string[] { "normal", "page4", "page5", "drag-subtitle", "drag-uncertain", "blocked-filters", "advanced-settings", "font-picker", "color-picker", "subtitle-settings" })
+            foreach (string view in new string[] { "normal", "page4", "page5", "drag-subtitle", "drag-uncertain", "blocked-filters", "advanced-settings", "font-picker", "color-picker", "subtitle-settings", "long-files", "long-file-drag" })
             {
+                if (view.StartsWith("long-file")) {
+                    string title = "【超原画级 4K】某科学的超电磁炮系列OP ED全合集 (AI画质提升版)";
+                    captions.Find("subtitle-0").Title = title + ".json";
+                    captions.Find("Danmaku-0").Title = title + ".xml";
+                    captions.Find("Advanced-0").Title = title + ".ass";
+                    captions.Find("Uncertain-0").Title = title + ".srt";
+                }
                 type.GetField("page", flags).SetValue(popup, view == "subtitle-settings" ? 1 : view == "advanced-settings" || view.EndsWith("picker") ? 2 : 0); captions.Options.Scrolling = view != "blocked-filters"; captions.Options.Fixed = view != "blocked-filters"; captions.Options.Colored = view != "blocked-filters";
                 type.GetField("picker", flags).SetValue(popup, view == "font-picker" ? 1 : view == "color-picker" ? 2 : 0);
-                bool drag = view.StartsWith("drag-"); TextSource source = captions.Find(view == "drag-uncertain" ? "Uncertain-0" : "subtitle-0");
+                bool drag = view.StartsWith("drag-") || view == "long-file-drag"; TextSource source = captions.Find(view == "drag-uncertain" ? "Uncertain-0" : "subtitle-0");
                 int[] pages = (int[])type.GetField("listPages", flags).GetValue(popup); pages[0] = view == "page4" ? 3 : view == "page5" ? 4 : 0;
                 type.GetField("dragging", flags).SetValue(popup, drag);
                 type.GetField("dragSource", flags).SetValue(popup, source);
-                type.GetField("start", flags).SetValue(popup, new PointF(70, source.Category == TextCategory.Subtitle ? 60 : 229));
-                type.GetField("dragPoint", flags).SetValue(popup, new PointF(420, 115));
+                type.GetField("start", flags).SetValue(popup, new PointF(70 * scale, (source.Category == TextCategory.Subtitle ? 60 : 229) * scale));
+                type.GetField("dragPoint", flags).SetValue(popup, new PointF((view == "long-file-drag" ? 360 : 420) * scale, 115 * scale));
                 Type hitType = type.GetNestedType("Hit", System.Reflection.BindingFlags.NonPublic); object hit = Activator.CreateInstance(hitType, true);
                 RectangleF bounds = CaptionDropAreas.Bounds(source.Category); bounds.Height = 27;
+                bounds = new RectangleF(bounds.X * scale, bounds.Y * scale, bounds.Width * scale, bounds.Height * scale);
                 hitType.GetField("Rect", flags).SetValue(hit, bounds); type.GetField("pressed", flags).SetValue(popup, hit);
-                using (Bitmap bitmap = new Bitmap(620, CaptionDropAreas.MainHeight))
+                using (Bitmap bitmap = new Bitmap(popup.Width, popup.Height))
                 using (Graphics graphics = Graphics.FromImage(bitmap))
                 { graphics.Clear(Color.FromArgb(28, 29, 32)); paint.Invoke(popup, new object[] { new PaintEventArgs(graphics, new Rectangle(Point.Empty, bitmap.Size)) }); bitmap.Save(System.IO.Path.Combine(folder, view + ".png"), System.Drawing.Imaging.ImageFormat.Png); }
             }

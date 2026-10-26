@@ -1,0 +1,19 @@
+[Script Info]
+Title: Synthetic dan-any interoperability fixture
+Original Script: 根据 synthetic.xml 的弹幕信息，由 @dan-uni/dan-any-ext-ass(https://github.com/ani-uni/dan-any-ext-ass#readme) 生成
+ScriptType: v4.00+
+Collisions: Reverse
+PlayResX: 1920
+PlayResY: 1080
+Timer: 100.0000
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: F0,SimHei,25,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+Style: F1,SimHei,25,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+Style: F2,SimHei,36,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:02.23,0:00:06.23,F1,,0000,0000,0000,,{\an8\pos(960,966)\c&H0000FF\3c&H000000}bottom
+;Raw: H4sIAAAAAAAACjWMQQqDMBRE7zLrj9hYN/8a7U66UaIENL/oLKohd5dU3L33YCZhsDiGCZqyFKb/8ZI5bIR2CQyLh7rKNU8B928RwWiRr3D49z88yni2FZqwQl3bCiZoLeih9X0dCUVvpC3In3wCneoBUX0AAAA=

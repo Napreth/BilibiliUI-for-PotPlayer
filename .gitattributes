@@ -3,3 +3,6 @@
 # Preserve upstream license text and generated FFmpeg configuration verbatim.
 LICENSES/*.txt -whitespace
 third_party/FFmpeg/config.* -whitespace
+
+# Preserve upstream interoperability fixture bytes for their recorded hashes.
+tests/fixtures/dan-any/* -text

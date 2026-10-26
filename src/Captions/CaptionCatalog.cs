@@ -131,7 +131,7 @@ namespace BilibiliPotPlayer
         {
             if (Discovering) return;
             Discovering = true; string current = path; int version = generation;
-            HashSet<string> existing = new HashSet<string>(); foreach (TextSource source in Sources) if (source.Stream < 0 && source.Path != null) existing.Add(source.Path);
+            HashSet<string> existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase); foreach (TextSource source in Sources) if (source.Stream < 0 && source.Path != null) existing.Add(source.Path);
             ThreadPool.QueueUserWorkItem(delegate
             {
                 List<TextSource> found = new List<TextSource>();
@@ -140,11 +140,12 @@ namespace BilibiliPotPlayer
                     int count = 0;
                     foreach (string file in Directory.EnumerateFiles(Path.GetDirectoryName(current)))
                     {
-                        string extension = Path.GetExtension(file).ToLowerInvariant();
-                        if (!SupportedExtension(extension) || existing.Contains(file)) continue;
+                        if (!MatchingSidecar(current, file) || existing.Contains(file)) continue;
                         if (++count > 256) break;
-                        try { List<TextSource> parsed = ReadFile(file); string stem = Path.GetFileNameWithoutExtension(current); foreach (TextSource source in parsed) source.Enabled = (source.Category == TextCategory.Danmaku || source.Category == TextCategory.Advanced && source.AssRenderable) && (Path.GetFileNameWithoutExtension(file).Equals(stem,StringComparison.OrdinalIgnoreCase) || Path.GetFileName(file).StartsWith(stem + ".", StringComparison.OrdinalIgnoreCase)); found.AddRange(parsed); }
-                        catch (Exception error) { if (!(error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is System.Xml.XmlException || error is ArgumentException || error is InvalidOperationException || error is System.Text.RegularExpressions.RegexMatchTimeoutException)) throw; found.Add(new TextSource { Id = Key(file), Path = file, Title = Path.GetFileName(file), Category = TextCategory.Uncertain, Loaded = true, Error = error.Message, Detail = "读取失败" }); }
+                        try { found.AddRange(ReadFile(file)); }
+                        // A matching name is only a candidate. Invalid or unrelated content
+                        // must not create an empty track; explicit imports report the error.
+                        catch (Exception error) { if (!(error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is System.Xml.XmlException || error is ArgumentException || error is InvalidOperationException || error is System.Text.RegularExpressions.RegexMatchTimeoutException)) throw; }
                     }
                 }
                 catch (IOException) { } catch (UnauthorizedAccessException) { }
@@ -153,9 +154,13 @@ namespace BilibiliPotPlayer
         }
         internal static bool SupportedExtension(string extension)
         { return new HashSet<string> { ".srt", ".ass", ".ssa", ".vtt", ".lrc", ".xml", ".json", ".ttml", ".dfxp" }.Contains(extension.ToLowerInvariant()); }
+        static bool MatchingSidecar(string mediaPath, string file)
+        { return SupportedExtension(Path.GetExtension(file)) && Path.GetFileNameWithoutExtension(file).Equals(Path.GetFileNameWithoutExtension(mediaPath), StringComparison.OrdinalIgnoreCase); }
         internal static List<TextSource> ReadFile(string file)
         {
-            List<TextSource> sources = DanmakuFactory.Adapt(TimedText.Read(file));
+            List<TextSource> sources = TimedText.Read(file);
+            if (!sources.Exists(s => s.Events.Count > 0)) throw new InvalidDataException("文件中没有可识别的字幕或弹幕条目");
+            sources = DanmakuFactory.Adapt(sources);
             for (int i = 0; i < sources.Count; i++) { TextSource source = sources[i]; source.Path = file; source.Id = Key(file) + ":" + i; source.Enabled = source.Category == TextCategory.Danmaku && source.Cues.Count > 0 || source.Category == TextCategory.Advanced && source.AssRenderable; }
             return sources;
         }
@@ -184,8 +189,7 @@ namespace BilibiliPotPlayer
         {
             if (initialSelectionDone || Slots.Main != null || Sources.Count == 0) return;
             // Initial discovery only: closing a selected track does not call this path again.
-            string stem = Path.GetFileNameWithoutExtension(path);
-            TextSource selected = Sources.Find(s => s.Category == TextCategory.Subtitle && s.Error.Length == 0 && s.Path != null && s.Stream < 0 && (Path.GetFileNameWithoutExtension(s.Path).Equals(stem, StringComparison.OrdinalIgnoreCase) || Path.GetFileNameWithoutExtension(s.Path).StartsWith(stem + ".", StringComparison.OrdinalIgnoreCase)));
+            TextSource selected = Sources.Find(s => s.Category == TextCategory.Subtitle && s.Error.Length == 0 && s.Path != null && s.Stream < 0 && MatchingSidecar(path, s.Path));
             if (selected == null && media != null && new List<ContainerCaption>(streams.CaptionTracks).Exists(t => t.Default && t.Bitmap)) { initialSelectionDone = true; return; }
             if (selected == null) selected = Sources.Find(s => s.Category == TextCategory.Subtitle && !s.Bitmap && s.Stream >= 0 && media != null && new List<ContainerCaption>(streams.CaptionTracks).Exists(t => t.Ordinal == s.Stream && t.Default));
             if (selected == null) selected = Sources.Find(s => s.Category == TextCategory.Subtitle && !s.Bitmap && s.Stream >= 0);
@@ -260,6 +264,8 @@ namespace BilibiliPotPlayer
                 }
                 target.Events.Clear(); target.Events.AddRange(parsed.Events); target.Analysis = parsed.Analysis; target.AutoCategory = parsed.AutoCategory;
                 target.AssHeader = parsed.AssHeader;
+                target.MetadataDetail = parsed.MetadataDetail;
+                target.OriginalEvents.Clear(); target.OriginalEvents.AddRange(parsed.OriginalEvents);
                 target.ProtocolAdvanced = parsed.ProtocolAdvanced;
                 target.Fonts.Clear(); target.Fonts.AddRange(parsed.Fonts);
                 target.IntrinsicAdvanced = parsed.IntrinsicAdvanced; target.Category = parsed.Category; target.Detail = parsed.Detail; target.Loaded = true; target.Error = "";

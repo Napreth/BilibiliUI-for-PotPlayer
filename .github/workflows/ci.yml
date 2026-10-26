@@ -34,7 +34,7 @@ jobs:
         id: dependencies
         env:
           MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
-          INPUT_HASH: ${{ hashFiles('build/dependencies.lock.json', 'build/ffmpeg.ps1', 'build/ffmpeg.sh', 'build/libass.ps1', 'build/libass-options.json', 'build/danmaku-factory.ps1', 'build/dependency-cache.ps1', '.gitmodules', 'third_party/DanmakuFactory/src/**', 'third_party/DanmakuFactory/LICENSE', 'third_party/DanmakuFactory/xmake.lua') }}
+          INPUT_HASH: ${{ hashFiles('build/dependencies.lock.json', 'build/ffmpeg.ps1', 'build/ffmpeg.sh', 'build/libass.ps1', 'build/libass-options.json', 'build/danmaku-factory.ps1', 'build/raw-compression.ps1', 'build/dependency-cache.ps1', '.gitmodules', 'third_party/DanmakuFactory/src/**', 'third_party/DanmakuFactory/LICENSE', 'third_party/DanmakuFactory/xmake.lua') }}
         run: |
           $gcc = & "$env:MSYS2_LOCATION\mingw64\bin\gcc.exe" -dumpfullversion
           if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the dependency compiler.' }
@@ -65,6 +65,7 @@ jobs:
           ./build/ffmpeg.ps1 -CollectOnly
           ./build/libass.ps1 -Rebuild
           ./build/danmaku-factory.ps1 -Rebuild -DependenciesOnly
+          ./build/raw-compression.ps1 -Rebuild -DependenciesOnly
           ./build/dependency-cache.ps1 -Mode Export
       # Save immediately, so a later project compile/test failure keeps the dependencies.
       - name: Save freshly built external dependencies

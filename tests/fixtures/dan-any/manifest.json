@@ -1,0 +1,127 @@
+{
+  "generator": "@dan-uni/dan-any-ext-ass@2.2.3",
+  "core": "@dan-uni/dan-any@2.3.9",
+  "records": 7,
+  "fixtures": [
+    {
+      "name": "v2-zstd-base16384.ass",
+      "sha256": "fede6c9c760c0cc2c29c9823e00cffd6d76ba84831dc3319df80d7a62054818f"
+    },
+    {
+      "name": "v2-gzip-base64.ass",
+      "sha256": "098c19fda24ffbd47d5b082c2544374e8f80c165527bff60ced8dcb40f6e198e"
+    },
+    {
+      "name": "v2-brotli-base64.ass",
+      "sha256": "92f615d63791987246950aaa5d12a870997db8852a5b6d0b579d044419ee103b"
+    },
+    {
+      "name": "no-raw.ass",
+      "sha256": "de7c27f7e5ea7159b4cf7c1d1fe1a1de33f8234ac82059ad83b3528ceb82bb6b"
+    },
+    {
+      "name": "removed-event.ass",
+      "sha256": "ac0bac18f586e4401d3ee464be1f011e5af398fb99c54d3e20a791505e967d69"
+    },
+    {
+      "name": "v1-gzip-base64.ass",
+      "sha256": "b6f9a72ab2381fcde5675572fe8f5aa80c1d0b1e3c01644b762d3fd7255731f7"
+    },
+    {
+      "name": "biliy-gzip-base64.ass",
+      "sha256": "e41b55ba983966194e516943ae823ce8fff19fba5359ff1f7c214c317fc5ae54"
+    },
+    {
+      "base16384": "㴀",
+      "hex": ""
+    },
+    {
+      "base16384": "剀㴁",
+      "hex": "11"
+    },
+    {
+      "base16384": "剓一㴂",
+      "hex": "114c"
+    },
+    {
+      "base16384": "剓噰㴃",
+      "hex": "114c87"
+    },
+    {
+      "base16384": "剓噼嘀㴄",
+      "hex": "114c87c2"
+    },
+    {
+      "base16384": "剓噼姴㴅",
+      "hex": "114c87c2fd"
+    },
+    {
+      "base16384": "剓噼姴蘀㴆",
+      "hex": "114c87c2fd38"
+    },
+    {
+      "base16384": "剓噼姴虳㴀",
+      "hex": "114c87c2fd3873"
+    },
+    {
+      "base16384": "剓噼姴虳禀㴁",
+      "hex": "114c87c2fd3873ae"
+    },
+    {
+      "base16384": "剓噼姴虳禺帀㴂",
+      "hex": "114c87c2fd3873aee9"
+    },
+    {
+      "base16384": "剓噼姴虳禺恀㴃",
+      "hex": "114c87c2fd3873aee924"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅言㴄",
+      "hex": "114c87c2fd3873aee9245f"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豨㴅",
+      "hex": "114c87c2fd3873aee9245f9a"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挀㴆",
+      "hex": "114c87c2fd3873aee9245f9ad5"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐㴀",
+      "hex": "114c87c2fd3873aee9245f9ad510"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐惀㴁",
+      "hex": "114c87c2fd3873aee9245f9ad5104b"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐惡渀㴂",
+      "hex": "114c87c2fd3873aee9245f9ad5104b86"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐惡稐㴃",
+      "hex": "114c87c2fd3873aee9245f9ad5104b86c1"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐惡稟縀㴄",
+      "hex": "114c87c2fd3873aee9245f9ad5104b86c1fc"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐惡稟络㴅",
+      "hex": "114c87c2fd3873aee9245f9ad5104b86c1fc37"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐惡稟绝耀㴆",
+      "hex": "114c87c2fd3873aee9245f9ad5104b86c1fc3772"
+    },
+    {
+      "base16384": "剓噼姴虳禺恅豫挐惡稟绝肭㴀",
+      "hex": "114c87c2fd3873aee9245f9ad5104b86c1fc3772ad"
+    },
+    {
+      "name": "reference.pb",
+      "sha256": "7efda0aa6f8b1665eb7f2804059d2f0a579fe8abfe903f0a7a5b0405fdf46a94"
+    }
+  ]
+}

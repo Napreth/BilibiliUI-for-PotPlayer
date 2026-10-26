@@ -1,0 +1,24 @@
+[Script Info]
+Title: Synthetic dan-any interoperability fixture
+Original Script: 根据 synthetic.xml 的弹幕信息，由 @dan-uni/dan-any-ext-ass(https://github.com/ani-uni/dan-any-ext-ass#readme) 生成
+ScriptType: v4.00+
+Collisions: Reverse
+PlayResX: 1920
+PlayResY: 1080
+Timer: 100.0000
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: F0,SimHei,25,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+Style: F1,SimHei,25,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+Style: F2,SimHei,36,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.23,0:00:09.23,F1,,0000,0000,0000,,{\move(1920,54,-192,54)}normal ｛中文｝
+Dialogue: 0,0:00:02.23,0:00:06.23,F1,,0000,0000,0000,,{\an8\pos(960,966)\c&H0000FF\3c&H000000}bottom
+Dialogue: 0,0:00:03.23,0:00:07.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}top
+Dialogue: 0,0:00:04.23,0:00:08.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}reverse
+Dialogue: 0,0:00:05.4,0:00:09.4,F1,,0000,0000,0000,,{\an8\pos(960,54)}[0.25,0.4,"1-1",4,"Static Mode 7 中文",0,0,0.25,0.4,4000,0,true,"Arial",1]
+Dialogue: 0,0:00:06.23,0:00:10.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}literal code
+Dialogue: 0,0:00:07.23,0:00:11.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}literal BAS

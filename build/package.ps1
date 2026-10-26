@@ -5,6 +5,7 @@ if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot 'ffmpeg.ps1')
     & (Join-Path $PSScriptRoot 'libass.ps1')
     & (Join-Path $PSScriptRoot 'danmaku-factory.ps1') -DependenciesOnly
+    & (Join-Path $PSScriptRoot 'raw-compression.ps1') -DependenciesOnly
     & (Join-Path $PSScriptRoot 'native.ps1')
     & (Join-Path $PSScriptRoot 'managed.ps1') -Test
     & (Join-Path $PSScriptRoot 'skin.ps1')
@@ -39,6 +40,11 @@ $factoryNotices=Join-Path $notices 'danmaku-factory'
 New-Item -ItemType Directory -Path $factoryNotices -Force | Out-Null
 $factoryLock=(Get-Content (Join-Path $PSScriptRoot 'dependencies.lock.json') -Raw | ConvertFrom-Json).danmakuFactory
 Copy-Item -LiteralPath (Join-Path $repo '.local/dependencies/DanmakuFactory-source.zip'),(Join-Path $repo '.local/dependencies/DanmakuFactory-revision.json'),(Join-Path $repo ('.local/dependencies/'+$factoryLock.pcre2.archive)),(Join-Path $PSScriptRoot 'danmaku-factory.ps1') -Destination $factoryNotices
+$rawNotices = Join-Path $notices 'raw-compression'
+New-Item -ItemType Directory -Path $rawNotices -Force | Out-Null
+$rawLock = (Get-Content (Join-Path $PSScriptRoot 'dependencies.lock.json') -Raw | ConvertFrom-Json).rawCompression
+foreach ($item in $rawLock.sources) { Copy-Item -LiteralPath (Join-Path $repo ('.local/dependencies/'+$item.archive)) -Destination $rawNotices }
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'raw-compression.ps1') -Destination $rawNotices
 $relativeFiles = @(Get-ChildItem -LiteralPath $runtime -File -Recurse | ForEach-Object { $_.FullName.Substring($runtime.Length+1).Replace('\','/') })
 $relativeFiles | ConvertTo-Json | Set-Content (Join-Path $runtime 'installed-files.json') -Encoding UTF8
 $hashes = @(Get-ChildItem -LiteralPath $stage -File -Recurse | ForEach-Object { [ordered]@{Path=$_.FullName.Substring($stage.Length+1).Replace('\','/');SHA256=(Get-FileHash -LiteralPath $_.FullName).Hash} })

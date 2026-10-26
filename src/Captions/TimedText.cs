@@ -23,6 +23,10 @@ namespace BilibiliPotPlayer
         internal CueMotion Motion;
         internal CueEffects Effects;
         internal TextCategory? Declared;
+        // A known ASS converter's style classification is separate from protocol
+        // effects: these events must remain renderable by libass.
+        internal TextCategory? ConverterCategory;
+        internal string Converter = "";
         internal int Mode = 1, Color = 0xFFFFFF, Size = 25;
         internal int? Weight;
     }
@@ -30,6 +34,7 @@ namespace BilibiliPotPlayer
     {
         internal string Id, Title, Detail = "", Path, Format = "", Error = "";
         internal string AssHeader = "";
+        internal string MetadataDetail = "";
         internal bool ProtocolAdvanced;
         internal bool Converted;
         internal readonly List<TextCue> OriginalEvents = new List<TextCue>();

@@ -21,6 +21,11 @@ if ($Mode -eq 'Export') {
         'third_party/libass/win-x64/libass-9.dll','third_party/libass/win-x64/libass.dll.a'
     )
     $files += $lock.libass.sources | ForEach-Object { '.local/dependencies/'+$_.archive }
+    $files += $lock.rawCompression.sources | ForEach-Object { '.local/dependencies/'+$_.archive }
+    $files += '.local/dependencies/raw-compression/win-x64/libRawCompression.a'
+    $files += '.local/dependencies/raw-compression/win-x64/source-fingerprint.txt'
+    $rawHeaders = Join-Path $repo '.local/dependencies/raw-compression/win-x64/include'
+    $files += Get-ChildItem -LiteralPath $rawHeaders -Filter '*.h' -File -Recurse | ForEach-Object { $_.FullName.Substring($repo.Length+1).Replace('\','/') }
     foreach ($library in @('avcodec','avformat','avutil')) {
         $dll = @(Get-ChildItem -LiteralPath (Join-Path $repo 'third_party/FFmpeg/win-x64') -Filter "$library-*.dll" -File)
         if ($dll.Count -ne 1) { throw "Expected one FFmpeg DLL: $library" }
@@ -34,7 +39,7 @@ if ($Mode -eq 'Export') {
     foreach ($directory in $headers) {
         $files += Get-ChildItem -LiteralPath (Join-Path $repo $directory) -Filter '*.h' -File | ForEach-Object { $directory+'/'+$_.Name }
     }
-    $notices = @('LICENSE.LGPL-2.1.txt','libass-ISC.txt','FreeType-FTL.txt','HarfBuzz-MIT.txt','HarfBuzz-Microsoft-MIT.txt','FriBidi-LGPL-2.1.txt','DanmakuFactory-MIT.txt','PCRE2-BSD.txt')
+    $notices = @('LICENSE.LGPL-2.1.txt','libass-ISC.txt','FreeType-FTL.txt','HarfBuzz-MIT.txt','HarfBuzz-Microsoft-MIT.txt','FriBidi-LGPL-2.1.txt','DanmakuFactory-MIT.txt','PCRE2-BSD.txt','Zstandard-BSD.txt','Brotli-MIT.txt')
     $files += $notices | ForEach-Object { 'LICENSES/'+$_ }
     $files = @($files | Sort-Object -Unique)
     foreach ($relative in $files) {

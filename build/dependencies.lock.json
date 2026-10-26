@@ -48,6 +48,12 @@
       }
     ]
   },
+  "rawCompression": {
+    "sources": [
+      { "name": "zstd", "version": "1.5.7", "directory": "zstd-1.5.7", "archive": "zstd-1.5.7.tar.gz", "url": "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz", "sha256": "EB33E51F49A15E023950CD7825CA74A4A2B43DB8354825AC24FC1B7EE09E6FA3" },
+      { "name": "brotli", "version": "1.2.1", "directory": "brotli-1.2.1", "archive": "brotli-1.2.1.tar.gz", "url": "https://codeload.github.com/google/brotli/tar.gz/refs/tags/v1.2.1", "sha256": "98D35D11A78DC453AEBB7D10C3748F3F73FF78C8267C0DC697B8631F67BF7E8F" }
+    ]
+  },
   "danmakuFactory": {
     "repository": "https://github.com/hihkm/DanmakuFactory.git",
     "commit": "3813e93b13b087e95901d1822baf9c3540e3f3f6",

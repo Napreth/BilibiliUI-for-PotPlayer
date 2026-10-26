@@ -80,10 +80,13 @@ namespace BilibiliPotPlayer
         }
         string L(string chinese, string translated) { return english ? translated : chinese; }
         RectangleF R(float x, float y, float width, float height) { return new RectangleF(x * scale, y * scale, width * scale, height * scale); }
-        void Label(Graphics graphics, string text, RectangleF rect, Color color, bool bold = false, float size = 12, bool center = false)
+        void Label(Graphics graphics, string text, RectangleF rect, Color color, bool bold = false, float size = 12, bool center = false, bool fileName = false)
         {
             using (Font font = new Font("Microsoft YaHei UI", size * scale, bold ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel))
+            {
+                if (fileName) text = CaptionFileNames.Fit(graphics, text, font, Rectangle.Round(rect).Width);
                 TextRenderer.DrawText(graphics, text, font, Rectangle.Round(rect), color, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | (center ? TextFormatFlags.HorizontalCenter : 0));
+            }
         }
         void Line(Graphics graphics, float x1, float y1, float x2, float y2)
         { using (Pen pen = new Pen(Color.FromArgb(61, 62, 68), scale)) graphics.DrawLine(pen, x1 * scale, y1 * scale, x2 * scale, y2 * scale); }
@@ -149,7 +152,7 @@ namespace BilibiliPotPlayer
             }
             else if (category == TextCategory.Danmaku || category == TextCategory.Advanced) Switch(graphics, x + 1, y - 4, source.Enabled, enabled);
             float inset = category == TextCategory.Uncertain ? 8 : 40;
-            Label(graphics, source.Title, R(x + inset, y, width - inset - 8, 27), enabled ? isSelected ? selected : Color.White : muted, isSelected, 12);
+            Label(graphics, source.Title, R(x + inset, y, width - inset - 8, 27), enabled ? isSelected ? selected : Color.White : muted, isSelected, 12, false, source.Stream < 0);
         }
         void DraggedRow(Graphics graphics)
         {

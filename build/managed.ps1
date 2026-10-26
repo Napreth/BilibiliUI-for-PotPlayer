@@ -59,6 +59,7 @@ Copy-Item -Path (Join-Path $repo 'third_party/FFmpeg/win-x64/*.dll') -Destinatio
 Copy-Item -LiteralPath (Join-Path $repo 'src/Native/AssRenderer/BilibiliAss.dll') -Destination $output -Force
 Copy-Item -Path (Join-Path $repo 'third_party/libass/win-x64/*.dll') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repo 'src/Native/DanmakuConverter/BilibiliDanmakuFactory.dll') -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $repo 'src/Native/RawCompression/BilibiliRawCompression.dll') -Destination $output -Force
 if ($Test) {
     & (Join-Path $output 'BilibiliBehaviors.Tests.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Checks failed.' }

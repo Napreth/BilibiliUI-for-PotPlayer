@@ -1,0 +1,25 @@
+[Script Info]
+Title: Synthetic dan-any interoperability fixture
+Original Script: 根据 synthetic.xml 的弹幕信息，由 @dan-uni/dan-any-ext-ass(https://github.com/ani-uni/dan-any-ext-ass#readme) 生成
+ScriptType: v4.00+
+Collisions: Reverse
+PlayResX: 1920
+PlayResY: 1080
+Timer: 100.0000
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: F0,SimHei,25,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+Style: F1,SimHei,25,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+Style: F2,SimHei,36,&H66FFFFNAN,&H66FFFFNAN,&H66000000,&H66000000,0,0,0,0,100,100,0,0,1,2,0,7,0,0,0,0
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.23,0:00:09.23,F1,,0000,0000,0000,,{\move(1920,54,-192,54)}normal ｛中文｝
+Dialogue: 0,0:00:02.23,0:00:06.23,F1,,0000,0000,0000,,{\an8\pos(960,966)\c&H0000FF\3c&H000000}bottom
+Dialogue: 0,0:00:03.23,0:00:07.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}top
+Dialogue: 0,0:00:04.23,0:00:08.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}reverse
+Dialogue: 0,0:00:05.4,0:00:09.4,F1,,0000,0000,0000,,{\an8\pos(960,54)}[0.25,0.4,"1-1",4,"Static Mode 7 中文",0,0,0.25,0.4,4000,0,true,"Arial",1]
+Dialogue: 0,0:00:06.23,0:00:10.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}literal code
+Dialogue: 0,0:00:07.23,0:00:11.23,F1,,0000,0000,0000,,{\an8\pos(960,54)}literal BAS
+;Raw: H4sIAAAAAAAACsXSv06sQBQG8FchXz1LzgAL3uk0NhZWWikWLHt2nQSYzXBWNxLq+wb3Lex9IONz3OCfCIlGC80GijNhyPy+L9OhdM3KrmG6Xg2z8E5eFpVtBeayA+/EFzAdVq6R1t4xjB72Vs7D6DTLskjPFW7Zrq8FJlbYVIWsnK9hsLCVhUIptmYYRBSlM9Iz0udE5vkNiegCCsenJ8cwWNmdbD3PCAob79ae2xZGh1GcKNRuyTD0Km0EBo3zdVEF3ePD/dO/vz36Xn1N1jo9oB8n6wk5GpP1mLxwIq7+nvR3yo0m0ngsjcZScZt9MuMJMxkz4zHT8w37lvdJTSbUeUhJ/EZNxtRLCqO5ojBROfRM51DDdCaF2DI4dUsOsuDlKudQNDxv+xOiYS1+yyrHobdFlUPpK6j3yM98070enCkUy5vfObTv91j2fFJ2Or4Xk7IrK+yLKiiHT5/WdDD8MgxonAS843IrvNxvwnSSMPsy4dHh2ecB/ygsivajfFf9fxRpBfMBBgAA

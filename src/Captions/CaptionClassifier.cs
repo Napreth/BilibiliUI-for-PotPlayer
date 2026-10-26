@@ -80,10 +80,11 @@ namespace BilibiliPotPlayer
         }
         internal static List<TextSource> Split(TextSource source)
         {
-            List<TextCue> advanced = new List<TextCue>(), uncertain = new List<TextCue>(), normal = new List<TextCue>();
+            List<TextCue> advanced = new List<TextCue>(), uncertain = new List<TextCue>(), normal = new List<TextCue>(), convertedOrdinary = new List<TextCue>();
             foreach (TextCue c in source.Events) {
-                if ((c.Effects & ~CueEffects.Unparsed) != 0) advanced.Add(c);
+                if (c.ConverterCategory == TextCategory.Advanced || (c.Effects & ~CueEffects.Unparsed) != 0) advanced.Add(c);
                 else if ((c.Effects & CueEffects.Unparsed) != 0) uncertain.Add(c);
+                else if (c.ConverterCategory == TextCategory.Danmaku) convertedOrdinary.Add(c);
                 else normal.Add(c);
             }
             List<TextSource> result = new List<TextSource>();
@@ -97,6 +98,13 @@ namespace BilibiliPotPlayer
                     foreach (TextCategory category in new[] { TextCategory.Subtitle, TextCategory.Danmaku }) result.Add(Track(source, groups.Where(g => g.Category == category).SelectMany(g => g.Events).ToList(), category));
                 } else result.Add(Track(source, normal, null));
             }
+            if (convertedOrdinary.Count > 0) {
+                int ordinary = result.FindIndex(s => s.Category == TextCategory.Danmaku);
+                if (ordinary >= 0) {
+                    convertedOrdinary.AddRange(result[ordinary].Events);
+                    result[ordinary] = Track(source, convertedOrdinary, TextCategory.Danmaku);
+                } else result.Add(Track(source, convertedOrdinary, TextCategory.Danmaku));
+            }
             if (advanced.Count > 0) result.Add(Track(source, advanced, TextCategory.Advanced));
             if (uncertain.Count > 0) result.Add(Track(source, uncertain, TextCategory.Uncertain));
             if (result.Count == 0) result.Add(Track(source, normal, TextCategory.Uncertain));
@@ -104,8 +112,9 @@ namespace BilibiliPotPlayer
         }
         static TextSource Track(TextSource original, List<TextCue> events, TextCategory? forced)
         {
-            TextSource source = new TextSource { Title = original.Title, Format = original.Format, Error = original.Error, Loaded = true, AssHeader = original.AssHeader };
+            TextSource source = new TextSource { Title = original.Title, Format = original.Format, Error = original.Error, Loaded = true, AssHeader = original.AssHeader, MetadataDetail = original.MetadataDetail };
             source.Fonts.AddRange(original.Fonts);
+            source.OriginalEvents.AddRange(original.OriginalEvents);
             source.Events.AddRange(events); source.Analysis = Analyze(events);
             source.ProtocolAdvanced=events.Exists(c=>(c.Effects & CueEffects.Protocol)!=0);
             source.Category = forced ?? Decide(events, source.Analysis); source.AutoCategory = source.Category;
@@ -113,9 +122,11 @@ namespace BilibiliPotPlayer
             if (!source.IntrinsicAdvanced) source.Cues.AddRange(events);
             TimedText.Sort(source.Cues);
             if (forced.HasValue) source.Analysis.Reason = forced == TextCategory.Advanced ? "高级协议、有效动画或特殊绘图" : forced == TextCategory.Uncertain ? "关键表现信息无法可靠解析" : "稳定的混合事件子集合";
+            if (forced.HasValue && events.Count > 0 && events[0].Converter.Length > 0 && events.TrueForAll(c => c.ConverterCategory == forced && c.Converter == events[0].Converter)) { source.Analysis.Reason = events[0].Converter + (forced == TextCategory.Advanced ? " 高级表现" : " 普通弹幕"); source.Analysis.Confidence = 1; }
             if (forced == TextCategory.Advanced) source.Analysis.Confidence = 1;
             if (source.Category == TextCategory.Uncertain) source.Analysis.Confidence = 0;
             source.Detail = events.Count + (source.IntrinsicAdvanced ? source.AssRenderable ? " 条 ASS 特效" : " 条 · 暂不播放" : source.Category == TextCategory.Uncertain ? " 条 · 用途待确认" : source.Category == TextCategory.Subtitle ? " 条字幕" : " 条普通弹幕");
+            if (source.MetadataDetail.Length > 0) source.Detail += " · " + source.MetadataDetail;
             return source;
         }
     }
