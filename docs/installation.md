@@ -8,6 +8,8 @@
 
 安装程序保存鼠标、快捷键和皮肤选择，备份已有同名皮肤及启动扩展，安装 DLL 并启用 BilibiliLite。首次备份在 `%LOCALAPPDATA%\BilibiliPotPlayer\installation`；升级保留首次备份。不要删除备份。
 
+兼容的原生翻译脚本会保留原文件名并添加译文回传适配，原始字节另行备份；`BilibiliTranslation.dll` 同时安装在翻译脚本目录。卸载恢复匹配的原文件，并保留用户后续更新。引擎、账户和语言仍由原生设置管理，支持范围见[原生字幕翻译](native-subtitle-translation.md)。
+
 原生自定义快捷键会暂时清空。操作映射见项目 README。启动扩展在 `Extension/Media/PlayParse/MediaPlayParse - BilibiliBehaviors.as`，宿主和 DLL 在 `Extension/BilibiliBehaviors/`。没有托盘、自启、服务或计划任务。
 
 第三方许可证和声明统一安装到 `Extension/BilibiliBehaviors/LICENSES/`。FFmpeg、libass 及字体依赖的原始源码、配置和构建脚本在相邻的 `third-party/`。若播放器目录允许当前账户写入，可使用安装参数 `/CURRENTUSER`，将卸载入口登记到当前账户。

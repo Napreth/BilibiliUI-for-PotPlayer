@@ -194,7 +194,7 @@ namespace BilibiliPotPlayer
             Label(graphics, L("高级弹幕", "Advanced danmaku"), R(328, 154, 270, 24), Color.White, true); Rows(graphics, TextCategory.Advanced, 3, 326, 180, 3, 274);
             Line(graphics, 16, 284, 290, 284); Line(graphics, 326, 284, 603, 284);
             Switch(graphics, 24, 294, catalog.Slots.Multi); Label(graphics, L("多语言字幕", "Bilingual subtitles"), R(66, 294, 210, 34), Color.White); Register(R(20, 293, 266, 35), delegate { catalog.SetMulti(!catalog.Slots.Multi); });
-            Link(graphics, L("实时字幕翻译 · 未接入", "Subtitle translation · unavailable"), 66, 328, 222, delegate { }, false);
+            Link(graphics, L("实时字幕翻译 · ", "Subtitle translation · ") + (catalog.Options.TranslationEnabled ? L("开", "on") : L("关", "off")), 66, 328, 222, delegate { page = 3; picker = 0; });
             Link(graphics, L("在线字幕搜索", "Online subtitle search"), 66, 356, 180, delegate { Dismiss(); Native.SetCommand(Player, 10863); });
             Link(graphics, L("语音生成字幕 · 未接入", "Speech subtitles · unavailable"), 66, 384, 183, delegate { }, false);
             Link(graphics, L("从文件加载字幕/弹幕", "Load subtitles / danmaku"), 66, 412, 190, Import);
@@ -209,6 +209,55 @@ namespace BilibiliPotPlayer
             for (int i = 0; i < 6; i++) { double angle = (i * 60 - 90) * Math.PI / 180; points[i] = new PointF((x + 16 + (float)Math.Cos(angle) * 7.5f) * scale, (y + 14 + (float)Math.Sin(angle) * 7.5f) * scale); }
             using (Pen pen = new Pen(Color.White, 1.3f * scale)) { graphics.DrawPolygon(pen, points); graphics.DrawEllipse(pen, R(x + 13, y + 11, 6, 6)); }
             Register(hit, action);
+        }
+        void TranslationPage(Graphics graphics)
+        {
+            CaptionOptions options = catalog.Options;
+            Link(graphics, L("‹  返回", "‹  Back"), 24, 14, 90, delegate { page = 0; });
+            Label(graphics, L("实时字幕翻译", "Subtitle translation"), R(130, 14, 466, 28), Color.White, true, 15);
+            Line(graphics, 24, 54, 596, 54);
+            bool available = catalog.Translation != null;
+            Switch(graphics, 24, 70, options.TranslationEnabled, available);
+            Label(graphics, L("启用实时翻译", "Enable translation"), R(68, 70, 510, 34), Color.White, true, 13);
+            Register(R(24, 70, 570, 34), available ? (Action)delegate { options.TranslationEnabled = !options.TranslationEnabled; Changed(); } : null);
+            Label(graphics, L("翻译主字幕，原文和副字幕继续显示", "Translates the primary subtitle alongside the originals"), R(24, 111, 570, 27), muted);
+            Section(graphics, L("原生翻译设置", "Native translation settings"), 151);
+            Label(graphics, L("引擎：", "Engine: ") + (catalog.NativeTranslation == null ? L("沿用原生设置", "Native setting") : catalog.NativeTranslation.Engine), R(24, 186, 570, 30), Color.White, false, 13);
+            Label(graphics, L("语言：", "Languages: ") + (catalog.NativeTranslation == null ? L("沿用原生设置", "Native setting") : catalog.NativeTranslation.Languages), R(24, 225, 570, 30), Color.White, false, 13);
+            Field(graphics, L("打开 PotPlayer 原生翻译设置…", "Open PotPlayer translation settings…"), 24, 279, 572, false, delegate { Dismiss(); if (catalog.NativeTranslation != null) catalog.NativeTranslation.Configure(); });
+            Label(graphics, L("引擎、原文语言和目标语言由原生设置统一管理", "Engine and source / target languages follow PotPlayer settings"), R(24, 342, 570, 28), muted);
+            Label(graphics, L("请在原生设置中启用翻译，并配置所选引擎", "Enable translation and configure its engine in the native settings"), R(24, 378, 570, 28), muted);
+            Label(graphics, L("译文仍用当前字幕字体、位置和灰底显示", "Translations keep the current font, placement and background"), R(24, 414, 570, 28), muted);
+            Line(graphics, 24, 491, 596, 491);
+            string status = catalog.NativeTranslation != null ? catalog.NativeTranslation.Status : available ? catalog.Translation.Status : L("翻译服务未配置", "Translation service is not configured");
+            Label(graphics, L(status, TranslationStatusEnglish(status)), R(24, 507, 570, 28), accent);
+            Label(graphics, L("仅支持文本字幕；图片字幕需要先做文字识别", "Text subtitles only; bitmap subtitles require OCR"), R(24, 545, 570, 27), muted, false, 11);
+            Label(graphics, L("译文沿用原字幕时间，延迟结果不会延长显示", "Translation follows original timing, including late replies"), R(24, 575, 570, 27), muted, false, 11);
+            Link(graphics, L("重新尝试翻译", "Retry translation"), 24, 618, 190, delegate { if (catalog.NativeTranslation != null) catalog.NativeTranslation.Retry(); if (catalog.Translation != null) catalog.Translation.Retry(); }, available);
+        }
+        static string TranslationStatusEnglish(string status)
+        {
+            switch (status)
+            {
+                case "已关闭": return "Off";
+                case "字幕已关闭": return "Subtitles are off";
+                case "请先选择主字幕": return "Select a primary subtitle first";
+                case "不支持图像字幕": return "Bitmap subtitles are not supported";
+                case "正在读取主字幕…": return "Loading primary subtitles…";
+                case "正在配置原生翻译…": return "Configuring native translation…";
+                case "无法连接原生翻译回传": return "Unable to connect to native translation";
+                case "正在初始化原生翻译，请确认原生翻译已启用": return "Initializing; enable translation in PotPlayer settings";
+                case "原生翻译尚未启用或扩展不兼容，请检查原生设置": return "Check native settings: translation is disabled or incompatible";
+                case "无法写入翻译临时字幕": return "Unable to write temporary translation input";
+                case "原生播放器未接受字幕输入": return "PotPlayer could not load the translation input";
+                case "等待原生译文 · 引擎和语言沿用原生设置": return "Waiting for native translation";
+                case "原生译文已接入": return "Native translation is connected";
+                case "翻译服务未配置": return "Translation is not configured";
+                case "翻译已就绪": return "Translation is ready";
+                case "等待字幕": return "Waiting for subtitles";
+                case "正在翻译…": return "Translating…";
+                default: return status;
+            }
         }
         void FilterIcon(Graphics graphics, int index, float x, bool allowed, Action action)
         {
@@ -445,7 +494,7 @@ namespace BilibiliPotPlayer
             base.WndProc(ref message);
         }
         protected override void OnPaint(PaintEventArgs e)
-        { base.OnPaint(e); hits.Clear(); e.Graphics.SmoothingMode = SmoothingMode.AntiAlias; if (page == 0) MainPage(e.Graphics); else { SettingsPage(e.Graphics); Picker(e.Graphics); } using (Pen border = new Pen(Color.FromArgb(62, 63, 70))) e.Graphics.DrawRectangle(border, 0, 0, Width - 1, Height - 1); if (page == 0) DraggedRow(e.Graphics); }
+        { base.OnPaint(e); hits.Clear(); e.Graphics.SmoothingMode = SmoothingMode.AntiAlias; if (page == 0) MainPage(e.Graphics); else if (page == 3) TranslationPage(e.Graphics); else { SettingsPage(e.Graphics); Picker(e.Graphics); } using (Pen border = new Pen(Color.FromArgb(62, 63, 70))) e.Graphics.DrawRectangle(border, 0, 0, Width - 1, Height - 1); if (page == 0) DraggedRow(e.Graphics); }
         protected override void Dispose(bool disposing) { if (disposing) { tip.Dispose(); if(previewRenderer!=null) previewRenderer.Dispose(); } base.Dispose(disposing); }
     }
 }

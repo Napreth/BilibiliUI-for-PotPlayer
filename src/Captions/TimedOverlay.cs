@@ -102,6 +102,7 @@ namespace BilibiliPotPlayer
         long nextFrame, nextSample;
         long paintedTime = -1;
         int paintedRevision = -1;
+        int paintedTranslationRevision = -1;
         Bitmap bitmap;
         AssScene scene;
         internal IntPtr MenuWindow;
@@ -131,6 +132,9 @@ namespace BilibiliPotPlayer
             if (!clock.Valid) { Dismiss(); return; }
             now=wallClock.ElapsedMilliseconds;
             long time = (long)Math.Round(clock.Position(now));
+            if (catalog.NativeTranslation != null) catalog.NativeTranslation.Update(time / 1000.0, clock.Epoch);
+            if (catalog.Translation != null) catalog.Translation.Update(catalog.MediaPath, catalog.Find(catalog.Slots.Main), catalog.Options, time / 1000.0, clock.Epoch);
+            int translationRevision = catalog.Translation == null ? 0 : catalog.Translation.Revision;
             Rectangle picture=PictureBounds(new Rectangle(0,0,Width,Height),catalog.DisplayRatio);
             if (revision != catalog.Revision)
             {
@@ -139,7 +143,7 @@ namespace BilibiliPotPlayer
             // PotPlayer raises or recreates its video child when changing fullscreen/renderers.
             // Restore our sibling order even when a paused frame needs no repaint.
             RevealBelowMenus();
-            if (Visible && bitmap != null && bitmap.Width == Width && bitmap.Height == Height && paintedTime == time && paintedRevision == catalog.Revision) return;
+            if (Visible && bitmap != null && bitmap.Width == Width && bitmap.Height == Height && paintedTime == time && paintedRevision == catalog.Revision && paintedTranslationRevision == translationRevision) return;
             if (bitmap == null || bitmap.Width != Width || bitmap.Height != Height) { if (bitmap != null) bitmap.Dispose(); bitmap = new Bitmap(Math.Max(1, Width), Math.Max(1, Height), PixelFormat.Format32bppPArgb); measurements.Clear(); }
             using (Graphics graphics = Graphics.FromImage(bitmap))
             {
@@ -162,7 +166,7 @@ namespace BilibiliPotPlayer
             }
             if (scene == null) scene = new AssScene();
             scene.Render(bitmap,catalog,time,pendingComments,clock.AnimationTime(time / 1000.0),clock.Epoch,picture,Math.Max(96,Native.GetDpiForWindow(player))/96f);
-            if (!Visible) Reveal(false); Present(Handle, bitmap); paintedTime = time; paintedRevision = catalog.Revision;
+            if (!Visible) Reveal(false); Present(Handle, bitmap); paintedTime = time; paintedRevision = catalog.Revision; paintedTranslationRevision = translationRevision;
         }
         List<DanmakuPlacement> pendingComments;
         internal static Rectangle PictureBounds(Rectangle viewport,double ratio)

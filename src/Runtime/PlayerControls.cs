@@ -50,6 +50,8 @@ namespace BilibiliPotPlayer
             Player = player; Playlist = new PlaylistLayout(player); Layout = new WindowLayout(player);
             Mode = new WindowMode(player, Streams); SpeedMenu = new SpeedPopup(Speed, selectRate);
             Captions = new CaptionCatalog(player, Streams); SubtitleMenu = new SubtitlePopup(Subtitles, Captions);
+            Captions.NativeTranslation = new NativeSubtitleTranslation(player, Captions);
+            Captions.Translation = new SubtitleTranslation(Captions.NativeTranslation);
             Overlay = new TimedOverlay(Captions); Chrome = new PlaybackChrome(this); Camera = new CameraControl(player, Streams);
         }
         public IntPtr FocusedPlayer()

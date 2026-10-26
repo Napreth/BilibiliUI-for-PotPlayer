@@ -101,4 +101,7 @@ try {
 $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey(($backup.RegistryPath -replace '\\Settings$','\Main ShortCutList'))
 try { foreach ($name in $key.GetValueNames()) { $key.DeleteValue($name) } } finally { $key.Dispose() }
 if ($backup.Legacy -and (Test-Path -LiteralPath $legacyBootstrap)) { Remove-Item -LiteralPath $legacyBootstrap }
+$translationArguments = '--native-translation-prepare "' + $playerRoot + '" "' + $StateRoot + '"'
+$translation = Start-Process -FilePath (Join-Path $runtime 'BilibiliBehaviors.exe') -ArgumentList $translationArguments -WindowStyle Hidden -Wait -PassThru
+if ($translation.ExitCode -ne 0) { throw 'Native translation extension preparation failed; original scripts are retained in the installation recovery folder.' }
 Write-Output "Installed BilibiliBehaviors: $runtime"

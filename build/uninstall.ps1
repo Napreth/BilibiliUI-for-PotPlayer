@@ -15,6 +15,9 @@ foreach ($file in $backup.Files) {
 }
 if ($CheckOnly) { return }
 Stop-BehaviorHost $runtime
+$translationArguments = '--native-translation-restore "' + $backup.PlayerRoot + '" "' + $StateRoot + '"'
+$translation = Start-Process -FilePath (Join-Path $runtime 'BilibiliBehaviors.exe') -ArgumentList $translationArguments -WindowStyle Hidden -Wait -PassThru
+if ($translation.ExitCode -ne 0) { throw 'Native translation extension restoration failed; installation files and recovery copies were retained.' }
 Restore-PlayerPreferences $backup
 foreach ($file in $backup.Files) {
     if ($file.Path -notin @('Extension/Media/PlayParse/MediaPlayParse - BilibiliBehaviors.as','Skins/BilibiliLite.dsf')) { throw 'Invalid backup file path.' }

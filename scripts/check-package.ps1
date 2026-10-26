@@ -27,7 +27,7 @@ foreach($item in $assLock.sources) {
     $archive=Join-Path $runtime ('third-party/libass/'+$item.archive)
     if((Get-FileHash -LiteralPath $archive).Hash -ne $item.sha256) { throw ('libass source checksum mismatch: '+$item.name) }
 }
-foreach($dll in @('BilibiliAss.dll','libass-9.dll','BilibiliDanmakuFactory.dll','BilibiliRawCompression.dll')) { if(-not (Test-Path -LiteralPath (Join-Path $runtime $dll))) { throw ('Missing text rendering/conversion dependency: '+$dll) } }
+foreach($dll in @('BilibiliAss.dll','libass-9.dll','BilibiliDanmakuFactory.dll','BilibiliRawCompression.dll','BilibiliTranslation.dll')) { if(-not (Test-Path -LiteralPath (Join-Path $runtime $dll))) { throw ('Missing text rendering/conversion dependency: '+$dll) } }
 $factoryLock=(Get-Content (Join-Path $repo 'build/dependencies.lock.json') -Raw|ConvertFrom-Json).danmakuFactory
 $factory=Join-Path $runtime 'third-party/danmaku-factory'
 $revision=Get-Content (Join-Path $factory 'DanmakuFactory-revision.json') -Raw|ConvertFrom-Json

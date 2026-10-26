@@ -10,7 +10,9 @@ namespace BilibiliPotPlayer
     // Initialize a private copy of the player's menu resource without displaying a popup.
     internal static class NativeCaptionAccess
     {
-        internal static List<NativeMenuSnapshot.Item> Read(IntPtr player)
+        internal static List<NativeMenuSnapshot.Item> Read(IntPtr player) { return Read(player, false); }
+        internal static List<NativeMenuSnapshot.Item> ReadSources(IntPtr player) { return Read(player, true); }
+        static List<NativeMenuSnapshot.Item> Read(IntPtr player, bool children)
         {
             List<NativeMenuSnapshot.Item> items = new List<NativeMenuSnapshot.Item>();
             uint pid; Native.GetWindowThreadProcessId(player, out pid);
@@ -26,6 +28,7 @@ namespace BilibiliPotPlayer
                 IntPtr caption = Find(root, 10126, 0);
                 if (caption == IntPtr.Zero) return items;
                 Initialize(player, caption, 0);
+                if (children) InitializeChildren(player, caption, 0);
                 ReadMenu(caption, items, 0);
             }
             catch (System.ComponentModel.Win32Exception) { }
@@ -47,6 +50,16 @@ namespace BilibiliPotPlayer
         {
             if (depth > 6) return;
             long unused; Native.TrySend(player, 0x117, unchecked((int)menu.ToInt64()), 0, out unused);
+        }
+        static void InitializeChildren(IntPtr player, IntPtr menu, int depth)
+        {
+            if (depth > 4) return;
+            for (int i = 0, count = Math.Min(128, GetMenuItemCount(menu)); i < count; i++)
+            {
+                IntPtr sub = GetSubMenu(menu, i); if (sub == IntPtr.Zero) continue;
+                long unused; Native.TrySend(player, 0x117, unchecked((int)sub.ToInt64()), i, out unused);
+                InitializeChildren(player, sub, depth + 1);
+            }
         }
         static void ReadMenu(IntPtr menu, List<NativeMenuSnapshot.Item> items, int depth)
         {

@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <wchar.h>
 #include <stdlib.h>
+#define TRANS_TOKEN L"BilibiliTranslation.Token"
 
 /* Decide geometry on the player's UI thread, before a native child is shown.
    Automatic fullscreen suppression preserves the last explicit sidebar choice. */
@@ -265,6 +266,10 @@ static LRESULT CALLBACK LayoutProc(HWND h, UINT msg, WPARAM wp, LPARAM lp)
 {
     WNDPROC original = (WNDPROC)GetPropW(h, PROP(L"Original"));
     if (!original) return DefWindowProcW(h, msg, wp, lp);
+    if (msg == WM_COMMAND && !HIWORD(wp) && ((LOWORD(wp) >= 11114 && LOWORD(wp) <= 11149) || (LOWORD(wp) >= 12000 && LOWORD(wp) <= 12400))) {
+        RemovePropW(h, TRANS_TOKEN);
+        Put(h, L"BilibiliTranslation.Settings", Value(h, L"BilibiliTranslation.Settings") + 1);
+    }
     if (msg == MSG_LAYOUT && wp == 2) {
         EnumChildWindows(h, RestoreChild, 0); RemovePropW(h, PROP(L"Identified")); RemovePropW(h, PROP(L"NativeSynced")); RemovePropW(h, PROP(L"NeedsReflow")); RemovePropW(h, PROP(L"ReflowQueued")); SetWindowLongPtrW(h, GWLP_WNDPROC, (LONG_PTR)original); RemovePropW(h, PROP(L"Original")); return 1;
     }

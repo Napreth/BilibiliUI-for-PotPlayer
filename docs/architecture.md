@@ -24,6 +24,7 @@ PotPlayer 的 .as 播放扩展启动 `BilibiliBehaviors.exe --from-player`。薄
 ## 原生模块
 
 - `PlayerLayout.dll` 保留已有提交前几何和重入保护。
+- `BilibiliTranslation.dll` 将原生 AngelScript 翻译扩展返回的有界文字传递给 Captions，校验会话后作为独立字幕行合成。原生设置管理引擎和语言，异步回传不触发弹幕重排；扩展适配和安装恢复见[原生字幕翻译](native-subtitle-translation.md)。
 - `BilibiliTimedText.dll` 使用 FFmpeg 公共 API 枚举第 n 条字幕，回传保留样式头和覆盖标签的 ASS 事件给统一分类器，并保留诊断用 SRT 导出。C# 不复制 FFmpeg ABI 结构体。只接受本地文件，并限制提取时长、内容大小和条目数。识别和拆分规则见 [字幕与弹幕自动分类](algorithms/caption-classification.md)。
 - 三个 FFmpeg LGPL DLL 独立分发并可替换；精确源码、配置和许可随安装包提供。系统 ffmpeg.exe 不参与运行。
 - `BilibiliAss.dll` 使用 libass 公共 API 管理字体、轨道与帧，合成预乘 BGRA 后交给现有透明窗口。`libass-9.dll` 动态分发，字体依赖静态链接于该 DLL；每个播放器的渲染上下文随媒体更换重建、随窗口关闭释放。细节见 [渲染说明](rendering.md)。

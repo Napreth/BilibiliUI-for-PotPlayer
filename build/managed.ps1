@@ -54,6 +54,7 @@ Copy-Item -LiteralPath (Join-Path $repo 'config/input-profile.json') -Destinatio
 Copy-Item -LiteralPath (Join-Path $repo 'third_party/MediaInfo/MediaInfo.dll') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repo 'LICENSES') -Destination $output -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repo 'src/Native/PlayerLayout/PlayerLayout.dll') -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $repo 'src/Native/SubtitleTranslation/BilibiliTranslation.dll') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repo 'src/Native/TimedText/BilibiliTimedText.dll') -Destination $output -Force
 Copy-Item -Path (Join-Path $repo 'third_party/FFmpeg/win-x64/*.dll') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repo 'src/Native/AssRenderer/BilibiliAss.dll') -Destination $output -Force

@@ -18,6 +18,17 @@ namespace BilibiliPotPlayer
         public static int Run(string[] args)
         {
             Native.SetProcessDpiAwarenessContext((IntPtr)(-4));
+            if (args.Length == 3 && (args[0] == "--native-translation-prepare" || args[0] == "--native-translation-restore"))
+            {
+                try
+                {
+                    ModuleCatalog.Validate();
+                    if (args[0] == "--native-translation-prepare") NativeTranslationScripts.Prepare(args[1], args[2]);
+                    else NativeTranslationScripts.Restore(args[1], args[2]);
+                    return 0;
+                }
+                catch (Exception error) { Console.Error.WriteLine(error.Message); return 1; }
+            }
             if (args.Length > 0 && args[0] == "--stop")
             {
                 try { using (EventWaitHandle e = EventWaitHandle.OpenExisting(InstanceName + "-stop")) e.Set(); } catch (WaitHandleCannotBeOpenedException) { }

@@ -22,6 +22,8 @@ namespace BilibiliPotPlayer
         public int SubtitleStyleVersion = 1;
         public bool SubtitleBackground;
         public bool SubtitlesEnabled = true;
+        public bool TranslationEnabled;
+        public string TranslationSource = "auto", TranslationTarget = "zh-CN";
         public bool DanmakuSpeedSync, DanmakuBold;
         public string DanmakuFont = "SimHei";
         public int DanmakuOutline = 1;
@@ -57,6 +59,8 @@ namespace BilibiliPotPlayer
             SubtitleOutlineColor &= 0xFFFFFF; SubtitleBackgroundColor &= 0xFFFFFF; DanmakuTextColor &= 0xFFFFFF; DanmakuOutlineColor &= 0xFFFFFF; DanmakuBackgroundColor &= 0xFFFFFF;
             if (Array.IndexOf(DanmakuSettings.Fonts, SubtitleFont) < 0) SubtitleFont = "Microsoft YaHei";
             if (Classes == null) Classes = new Dictionary<string, int>();
+            TranslationSource = TranslationLanguages.Normalize(TranslationSource, true);
+            TranslationTarget = TranslationLanguages.Normalize(TranslationTarget, false);
         }
         internal static string SettingsPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BilibiliPotPlayer", "caption-options.json"); } }
         internal void Save() { Save(SettingsPath); }
@@ -86,6 +90,8 @@ namespace BilibiliPotPlayer
         internal readonly SubtitleSlots Slots = new SubtitleSlots();
         internal readonly CaptionOptions Options;
         internal int Revision;
+        internal SubtitleTranslation Translation;
+        internal NativeSubtitleTranslation NativeTranslation;
         internal double DisplayRatio { get { return streams == null || streams.CameraCandidate ? 0 : streams.DisplayRatio; } }
         internal string MediaPath { get { return path; } }
         internal CaptionCatalog(IntPtr player, IMediaContext streams) : this(player, streams, CaptionOptions.Load(), null, null) { }
@@ -304,6 +310,6 @@ namespace BilibiliPotPlayer
         {
             using (SHA256 hash = SHA256.Create()) return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(System.IO.Path.GetFullPath(path).ToLowerInvariant()))).Replace("-", "");
         }
-        public void Dispose() { generation++; RestoreNative(); }
+        public void Dispose() { generation++; if (Translation != null) Translation.Dispose(); if (NativeTranslation != null) NativeTranslation.Dispose(); RestoreNative(); }
     }
 }

@@ -132,7 +132,23 @@ namespace BilibiliPotPlayer
             StringBuilder frame=new StringBuilder(Header(picture.Width,picture.Height,catalog.Options));
             TextSource main=catalog.Find(catalog.Slots.Main), second=catalog.Find(catalog.Slots.Secondary);
             double bottom=picture.Height*(1-catalog.Options.SubtitleBottom/100.0);
-            if(catalog.Options.SubtitlesEnabled && !picture.IsEmpty) { bottom=PlainCaption(frame,second,time/1000.0,picture.Width,picture.Height,bottom,.9,catalog.Options); PlainCaption(frame,main,time/1000.0,picture.Width,picture.Height,bottom,1,catalog.Options); }
+            if(catalog.Options.SubtitlesEnabled && !picture.IsEmpty) {
+                bottom=PlainCaption(frame,second,time/1000.0,picture.Width,picture.Height,bottom,.9,catalog.Options);
+                bottom=PlainCaption(frame,main,time/1000.0,picture.Width,picture.Height,bottom,1,catalog.Options);
+                if(catalog.Options.TranslationEnabled && catalog.Translation!=null && catalog.Translation.Track.Cues.Count>0) {
+                    // Authored ASS coordinates stay intact. Place the extra
+                    // row in a clear band, including both rows' gray padding.
+                    renderer.SetTrack("frame",frame.ToString());
+                    var ink=renderer.Regions("frame",0,picture);
+                    foreach(string key in subtitleKeys) ink.AddRange(renderer.Regions(key,time,picture));
+                    double size=catalog.Options.SubtitleSize*picture.Height/1080.0;
+                    double translationHeight=size*1.5*Math.Max(1,catalog.Translation.Track.Cues.Sum(c=>c.Text.Split('\n').Length));
+                    foreach(Rectangle block in ink.OrderByDescending(r=>r.Top))
+                        if(block.Top-picture.Top-size*.65-8*dpiScale<bottom && block.Bottom-picture.Top+size*.65+8*dpiScale>bottom-translationHeight)
+                            bottom=Math.Min(bottom,block.Top-picture.Top-size*.65-8*dpiScale);
+                    PlainCaption(frame,catalog.Translation.Track,time/1000.0,picture.Width,picture.Height,bottom,.9,catalog.Options);
+                }
+            }
             if(!picture.IsEmpty)renderer.SetTrack("frame",frame.ToString());
             foreach(string key in keys) renderer.Render(bitmap,key,time,100,picture);
             // Preserve type ordering across both independent animation clocks.

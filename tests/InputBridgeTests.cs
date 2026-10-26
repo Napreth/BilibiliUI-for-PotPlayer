@@ -16,14 +16,15 @@ internal static class BridgeTests
         checks++;
         if (!Object.Equals(expected, actual)) throw new Exception(label + ": expected " + expected + ", got " + actual);
     }
-    static int Main(string[] args)
+    [STAThread] static int Main(string[] args)
     {
         try { return Run(args); }
-        catch (Exception error) { Console.Error.WriteLine("FAIL: " + error.Message); return 1; }
+        catch (Exception error) { Console.Error.WriteLine("FAIL: " + (args.Length > 0 && args[0] == "--native-translation-e2e" ? error.ToString() : error.Message)); return 1; }
     }
     static int Run(string[] args)
     {
         Native.SetProcessDpiAwarenessContext((IntPtr)(-4));
+        if (args.Length == 4 && args[0] == "--native-translation-e2e") { NativeTranslationIntegrationChecks.Run(args[1], args[2], args[3]); return 0; }
         if (args.Length > 0 && args[0] == "--window-check") { WindowModeChecks.Run(); return 0; }
         if (args.Length > 0 && args[0] == "--aspect-check") { WindowModeChecks.CheckAspect(); return 0; }
         if (args.Length > 0 && args[0] == "--aspect-gesture-check") { WindowModeChecks.CheckAspectGestures(); return 0; }
@@ -243,6 +244,8 @@ internal static class BridgeTests
         SubtitleMaskChecks.Run(Equal<bool>);
         SubtitleCenteringChecks.Run(Equal<bool>);
         CaptionAppearanceChecks.Run(Equal<bool>);
+        SubtitleTranslationChecks.Run(Equal<bool>);
+        NativeTranslationChecks.Run(Equal<bool>);
         DanmakuFactoryChecks.Run(Equal<bool>);
         Console.WriteLine("PASS: " + checks + " input and metadata checks");
         return 0;
@@ -393,8 +396,12 @@ internal static class BridgeTests
             Type type = typeof(SubtitlePopup); var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
             type.GetField("scale", flags).SetValue(popup, scale); popup.Size = new Size((int)(620 * scale), (int)(CaptionDropAreas.MainHeight * scale));
             var paint = type.GetMethod("OnPaint", flags);
-            foreach (string view in new string[] { "normal", "page4", "page5", "drag-subtitle", "drag-uncertain", "blocked-filters", "advanced-settings", "font-picker", "color-picker", "subtitle-settings", "long-files", "long-file-drag" })
+            foreach (string view in new string[] { "normal", "page4", "page5", "drag-subtitle", "drag-uncertain", "blocked-filters", "advanced-settings", "font-picker", "color-picker", "subtitle-settings", "long-files", "long-file-drag", "translation-settings", "translation-settings-en" })
             {
+                bool translation = view.StartsWith("translation-");
+                popup.Size = new Size((int)(620 * scale), (int)((translation ? 656 : CaptionDropAreas.MainHeight) * scale));
+                if (translation && captions.Translation == null) captions.Translation = SubtitleTranslationChecks.Preview();
+                type.GetField("english", flags).SetValue(popup, view.EndsWith("-en"));
                 if (view.StartsWith("long-file")) {
                     string title = "【超原画级 4K】某科学的超电磁炮系列OP ED全合集 (AI画质提升版)";
                     captions.Find("subtitle-0").Title = title + ".json";
@@ -402,7 +409,7 @@ internal static class BridgeTests
                     captions.Find("Advanced-0").Title = title + ".ass";
                     captions.Find("Uncertain-0").Title = title + ".srt";
                 }
-                type.GetField("page", flags).SetValue(popup, view == "subtitle-settings" ? 1 : view == "advanced-settings" || view.EndsWith("picker") ? 2 : 0); captions.Options.Scrolling = view != "blocked-filters"; captions.Options.Fixed = view != "blocked-filters"; captions.Options.Colored = view != "blocked-filters";
+                type.GetField("page", flags).SetValue(popup, translation ? 3 : view == "subtitle-settings" ? 1 : view == "advanced-settings" || view.EndsWith("picker") ? 2 : 0); captions.Options.Scrolling = view != "blocked-filters"; captions.Options.Fixed = view != "blocked-filters"; captions.Options.Colored = view != "blocked-filters";
                 type.GetField("picker", flags).SetValue(popup, view == "font-picker" ? 1 : view == "color-picker" ? 2 : 0);
                 bool drag = view.StartsWith("drag-") || view == "long-file-drag"; TextSource source = captions.Find(view == "drag-uncertain" ? "Uncertain-0" : "subtitle-0");
                 int[] pages = (int[])type.GetField("listPages", flags).GetValue(popup); pages[0] = view == "page4" ? 3 : view == "page5" ? 4 : 0;
